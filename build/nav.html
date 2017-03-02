@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Snap Test</title>
+<meta name="viewport" content="width=480, initial-scale=1.0, maximum-scale=1">
+
+<script src="/js/lib/jquery.min.js"></script>
+<script src="/js/lib/handlebars-v4.0.5.js"></script>
+<script src="/js/Snap.js"></script>
+
+<style type="text/css">	
+	.nav-dot {
+		display: inline-block;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background-color: #CCC;
+		margin: 5px;
+	}
+	.nav-dot.selected {
+		background-color: #999;
+	}
+</style>
+</head>
+
+<body>
+	
+	<div data-tmpl="nav-list"></div>
+
+</body>
+
+<script type="text/javascript">
+
+var NavManager = (function(){
+
+	function back(){
+		Snap.setData('nav-list',function(data){
+			data.position--;
+			return data;
+		});
+	}
+
+	function next(){
+		Snap.setData('nav-list',function(data){
+			data.position++;
+			return data;
+		});
+	}
+
+	function goto(i){
+		Snap.setData('nav-list',function(data){
+			data.position = parseInt(i);
+			return data;
+		});
+	}
+
+	return {
+		back:back,
+		next:next,
+		goto:goto
+	};
+
+})();
+
+Snap.setTemplate('nav-list',`
+<div>
+	<button onclick="NavManager.back()">back</button>
+	{{#each groups}}
+	<span class="nav-dot {{{selected}}}" onclick="NavManager.goto({{{@index}}})"></span>
+	{{/each}}
+	<button onclick="NavManager.next()">next</button>
+</div>
+<div>{{position}}</div>
+{{#each currentGroup}}
+<div>{{name}}</div>
+{{/each}}
+`);
+
+
+Snap.setDataConfig('nav-list',{
+	defaultValue:{position:0, groups:[]},
+	useLocalStorage:true,
+	process:function(data){
+		data.position = Math.max(0,Math.min(data.groups.length-1,data.position));
+		data.currentGroup = data.groups[data.position];
+		$.each(data.groups,function(i,e){
+			e.selected = data.position===i ? 'selected' : '';
+		});
+		return data;
+	}
+})
+
+Snap.setData('nav-list',{
+	position:1,
+	groups:[
+		[
+			{name:'link 1'},
+			{name:'link 2'}
+		],
+		[
+			{name:'link 3'},
+			{name:'link 4'}
+		],
+		[
+			{name:'link 5'},
+			{name:'link 6'}
+		]
+	],
+	currentGroup:[]
+});
+
+
+
+// optionally set nav data in config call
+
+Snap.setDataConfig('nav-data',{
+	defaultValue:{},
+	useLocalStorage:true,
+	process:function(data){
+		var groups = [];
+		// loop through tree and get groups of child branches to populate nav-list object...
+	}
+});
+
+Snap.setData('nav-data',{
+	name:'home',
+	id:1,
+	children:[
+		{
+			name:'link 1',
+			id:2
+		},
+		{
+			name:'link 2',
+			id:3,
+			children:[
+				{name:'link 6'},
+				{name:'link 7'},
+				{name:'link 8'}
+			]
+		},
+		{
+			name:'link 3',
+			id:4,
+			opened:true,
+			children:[
+				{name:'link 1'},
+				{name:'link 2'},
+				{name:'link 3'}
+			]
+		}
+	]
+});
+
+Snap.render();
+
+</script>
+</html>
