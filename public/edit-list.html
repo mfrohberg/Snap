@@ -8,6 +8,7 @@
 <script src="/js/lib/jquery.min.js"></script>
 <script src="/js/lib/handlebars-v4.0.5.js"></script>
 <script src="/js/Snap.js"></script>
+<script src="/js/lib/parsley.min.js"></script>
 
 <style type="text/css">
 
@@ -37,6 +38,51 @@
 
 
 <script type="text/javascript">
+
+
+// add templates - import from files or precompile
+
+Snap.setTemplate('records',`
+	{{#each entries}}
+	<div data-tmpl="record-{{{id}}}"></div>
+	{{/each}}
+`);
+
+Snap.setTemplate('record-render',`{{snaptmpl tmpl this}}`);
+
+Snap.setTemplate('record-view',`
+	<div class="record" record-id="{{{id}}}" onclick="Page.editRecord(this,{{{id}}})">
+		<div>
+			<h4>{{name}}</h4>
+			<p>Qty: {{{quantity}}}</p>
+		</div>
+	</div>
+`);
+
+Snap.setTemplate('record-edit',`
+	<div class="record">
+		<form record-id="{{{id}}}">
+			<input type="hidden" name="id" value="{{{id}}}" />
+			<h4>{{name}}</h4>
+			<p>Qty: <input name="quantity" type="number" min="0" max="12" step="1" value="{{{quantity}}}" required /></p>
+			<p data-tmpl="delivery-options" data-watch="record-{{{id}}}"></p>
+			<p>
+				<button onclick="Page.cancelEdit({{{id}}});" type="button" name="action" value="cancel">Cancel</button>
+				<button type="submit" name="action" value="save">Save</button>
+			</p>
+		</form>
+	</div>
+`);
+
+Snap.setTemplate('delivery-options',`
+	<label>Delivery:
+		<select name="{{{delivery.name}}}" required>
+			{{#each delivery.options}}
+			<option value="{{{value}}}" {{#if selected}}selected{{/if}}>{{{name}}}</option>
+			{{/each}}
+		<select>
+	</label>
+`);
 
 // put business logic somewhere
 
@@ -68,7 +114,7 @@ var Page = (function(){
 			update[e.name] = e.value;
 		});
 
-		// validate
+		// validate - we should use parsley for this or some library
 		$('[name]',this).removeClass('error');
 
 		if(isNaN(update.quantity)){
@@ -114,7 +160,53 @@ var Page = (function(){
 	}
 
 	// add save event handler to page
-	$(document).on('submit','form[record-id]', saveRecord);
+	 $(document).on('submit','form[record-id]', saveRecord);
+
+	 Snap.setDataConfig('records',{
+		process:function(data){
+			$.each(data.entries,function(i,e){
+				e.tmpl = 'record-view';
+				e.delivery = {
+					name:"deliveryMethod",
+					options:[
+						{name:"*", value:""},
+						{name:"Ground", value:"ground"},
+						{name:"Air", value:"air"}
+					]
+				}
+
+				$.each(e.delivery.options, function(ii,ee){
+					ee.selected = ee.value===e.deliveryMethod;
+				});
+
+				Snap.setData('record-'+e.id,e);
+				Snap.setTemplate('record-'+e.id,Snap.getTemplate('record-render'));
+			});
+			return data;
+		}
+	});
+
+	Snap.request({
+		dataKey:'records',
+		url:'/js/test-data.json'
+	});
+
+	 // implement parsley
+	 /*
+	$(document).on('submit','form[record-id]', function(e){
+		e.preventDefault();
+		$(this).parsley();
+	});
+	*/
+
+	// $('form[record-id]').parsley().on('field:validated', function() {
+	// 	var ok = $('.parsley-error').length === 0;
+	// 	$('.bs-callout-info').toggleClass('hidden', !ok);
+	// 	$('.bs-callout-warning').toggleClass('hidden', ok);
+	// })
+	// .on('form:submit', function() {
+	// 	return false; // Don't submit form for this demo
+	// });
 
 	return {
 		saveRecord:saveRecord,
@@ -123,78 +215,6 @@ var Page = (function(){
 	}
 
 })()
-
-
-// add templates - import from files or precompile
-
-Snap.setTemplate('records',`
-	{{#each entries}}
-	<div class="record" data-tmpl="record-{{{id}}}"></div>
-	{{/each}}
-`);
-
-Snap.setTemplate('record-render',`<p>{{snaptmpl tmpl this}}</p>`);
-
-Snap.setTemplate('record-view',`
-	<div record-id="{{{id}}}" onclick="Page.editRecord(this,{{{id}}})">
-		<div>
-			<h4>{{name}}</h4>
-			<p>Qty: {{{quantity}}}</p>
-		</div>
-	</div>
-`);
-
-Snap.setTemplate('record-edit',`
-	<form record-id="{{{id}}}">
-		<input type="hidden" name="id" value="{{{id}}}" />
-		<h4>{{name}}</h4>
-		<p>Qty: <input name="quantity" type="number" min="0" max="12" step="1" value="{{{quantity}}}" /></p>
-		<p data-tmpl="delivery-options" data-watch="record-{{{id}}}"></p>
-		<p>
-			<button onclick="Page.cancelEdit({{{id}}});" type="button" name="action" value="cancel">Cancel</button>
-			<button type="submit" name="action" value="save">Save</button>
-		</p>
-	</form>
-`);
-
-Snap.setTemplate('delivery-options',`
-	<label>Delivery:
-		<select name="{{{delivery.name}}}">
-			{{#each delivery.options}}
-			<option value="{{{value}}}" {{#if selected}}selected{{/if}}>{{{name}}}</option>
-			{{/each}}
-		<select>
-	</label>
-`);
-
-Snap.setDataConfig('records',{
-	process:function(data){
-		$.each(data.entries,function(i,e){
-			e.tmpl = 'record-view';
-			e.delivery = {
-				name:"deliveryMethod",
-				options:[
-					{name:"*", value:""},
-					{name:"Ground", value:"ground"},
-					{name:"Air", value:"air"}
-				]
-			}
-
-			$.each(e.delivery.options, function(ii,ee){
-				ee.selected = ee.value===e.deliveryMethod;
-			});
-
-			Snap.setData('record-'+e.id,e);
-			Snap.setTemplate('record-'+e.id,Snap.getTemplate('record-render'));
-		});
-		return data;
-	}
-});
-
-Snap.request({
-	dataKey:'records',
-	url:'/js/test-data.json'
-});
 
 Snap.render();
 
