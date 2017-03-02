@@ -53,7 +53,7 @@ Options:
 		watchData(config.dataKey,renderElement);
 
 	}
-	Snap.addController();
+	Snap.setController();
 
 
 
@@ -74,32 +74,12 @@ var Snap = (function(){
 	// great for dynamic pages/SPA style stuff
 	Handlebars.registerHelper('snaptmpl', function(template, context) {
 		var tmpl = Handlebars.partials[template];
-	    return tmpl ? new Handlebars.SafeString('<div data-tmpl="'+template+'">'+tmpl(context)+'</div>') : "";
+		//console.log('snaptmpl',template,'==',tmpl,'context',context);
+	    //return tmpl ? new Handlebars.SafeString('<div data-tmpl="'+template+'">'+tmpl(context)+'</div>') : "";
+	    return new Handlebars.SafeString(tmpl(context));
 	});
 
-	function defaultTemplate(data){
-		return JSON.stringify(data);
-	}
-
-	function defaultController(el){
-
-		function renderElement(data){
-			config = getElementConfig(el);
-			config.$el.html(config.tmpl(data));
-			render(config.$el);
-		}
-
-		watchData(getElementConfig(el).dataKey,renderElement);
-	}
-
-	function addController(key,func){
-		controls[key] = func;
-	}
-
-	function getController(key){
-		return controls[key] || defaultController;
-	}
-
+	// internal helper
 	function getAttribute($e,key,defaultValue){
 		if($e[0].hasAttribute(key)){
 			var attr = $e.attr(key);
@@ -108,6 +88,39 @@ var Snap = (function(){
 			}
 		}
 		return defaultValue;
+	}
+
+	// default setting
+	function defaultTemplate(data){
+		return JSON.stringify(data);
+	}
+
+	function defaultController(el){
+		var config = getElementConfig(el);
+
+		function renderElement(data){
+			config.$el.html(config.tmpl(data));
+			render(config.$el);
+		}
+
+		function getConfig(){
+			return config;
+		}
+		//watchData(getElementConfig(el).dataKey,renderElement);
+		watchData(config.dataKey,renderElement);
+
+		return {
+			getConfig:getConfig
+		}
+	}
+
+	//
+	function setController(key,func){
+		controls[key] = func;
+	}
+
+	function getController(key){
+		return controls[key] || defaultController;
 	}
 
 	function getElementConfig(e){
@@ -174,6 +187,7 @@ var Snap = (function(){
 	}
 
 	function setTemplate(key,data){
+		if(debug) console.log('Snap.setTemplate()',key,data);
 		templates[key] = $.type(data)==='string' ? Handlebars.compile(data) : data;
 		Handlebars.registerPartial(key,templates[key]);
 		dispatchChange(key);
@@ -234,7 +248,7 @@ var Snap = (function(){
 	}
 
 	function getData(key){
-		console.log('Snap.getData()',key);
+		if(debug) console.log('Snap.getData()',key);
 		var data = null;
 		if(datas[key]){
 			data = datas[key];
@@ -331,7 +345,7 @@ var Snap = (function(){
 
 	return {
 		request:request,
-		addController:addController,
+		setController:setController,
 		getController:getController,
 		render:render,
 		addTemplate:addTemplate,

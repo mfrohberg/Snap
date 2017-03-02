@@ -1,0 +1,202 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Snap Test</title>
+<meta name="viewport" content="width=480, initial-scale=1.0, maximum-scale=1">
+
+<script src="/js/lib/jquery.min.js"></script>
+<script src="/js/lib/handlebars-v4.0.5.js"></script>
+<script src="/js/Snap.js"></script>
+
+<style type="text/css">
+
+.record {
+	border:1px solid #CCC;
+	box-sizing: border-box;
+	padding: 10px;
+	margin: 10px;
+}
+.record:hover {
+	border:1px solid #000;
+}
+.error {
+	border: 3px solid #CC3300;
+}
+</style>
+
+</head>
+
+<body>
+	
+	<div data-tmpl="records">
+	</div>
+
+</body>
+
+
+
+<script type="text/javascript">
+
+// put business logic somewhere
+
+var Page = (function(){
+
+	function editRecord(el,id){
+		// set template to edit view
+		Snap.setData('record-'+id,function(data){
+			data.tmpl = 'record-edit';
+			return data;
+		});
+	}
+
+	function cancelEdit(id){
+		Snap.setData('record-'+id,function(data){
+			data.tmpl = 'record-view';
+			return data;
+		});
+	}
+
+	function saveRecord(e){
+		// don't submit this form unless desired
+		e.preventDefault();
+
+		var update = {};
+		var arr = $(this).serializeArray();
+
+		$.each(arr,function(i,e){
+			update[e.name] = e.value;
+		});
+
+		// validate
+		$('[name]',this).removeClass('error');
+
+		if(isNaN(update.quantity)){
+			$('[name="quantity"]',this).addClass('error');
+			alert('Quantity value is invalid.');
+			return;
+		}
+
+		if(!update.deliveryMethod){
+			$('[name="deliveryMethod"]',this).addClass('error');
+			alert('Choose a delivery option.');
+			return;
+		}
+
+		// for testing - update local data
+		Snap.setData('record-'+update.id,function(data){
+			data.tmpl = 'record-view';
+			$.extend(data,update);
+
+			// set "selected" flag on delivery options
+			// there's probably a better way to do this
+			$.each(data.delivery.options, function(i,e){
+				e.selected = e.value===data.deliveryMethod;
+			});
+
+			return data;
+		});
+
+		// real loop will send update to server and update data
+		/*
+		Snap.request({
+			dataKey:'records',
+			url:'/js/test-data.json',
+			callback:function(){
+				Snap.setData('record-'+update.id,function(data){
+					data.tmpl = 'record-view';
+					$.extend(data,update);
+					return data;
+				});
+			}
+		})
+		*/
+	}
+
+	// add save event handler to page
+	$(document).on('submit','form[record-id]', saveRecord);
+
+	return {
+		saveRecord:saveRecord,
+		editRecord:editRecord,
+		cancelEdit:cancelEdit
+	}
+
+})()
+
+
+// add templates - import from files or precompile
+
+Snap.setTemplate('records',`
+	{{#each entries}}
+	<div class="record" data-tmpl="record-{{{id}}}"></div>
+	{{/each}}
+`);
+
+Snap.setTemplate('record-render',`<p>{{snaptmpl tmpl this}}</p>`);
+
+Snap.setTemplate('record-view',`
+	<div record-id="{{{id}}}" onclick="Page.editRecord(this,{{{id}}})">
+		<div>
+			<h4>{{name}}</h4>
+			<p>Qty: {{{quantity}}}</p>
+		</div>
+	</div>
+`);
+
+Snap.setTemplate('record-edit',`
+	<form record-id="{{{id}}}">
+		<input type="hidden" name="id" value="{{{id}}}" />
+		<h4>{{name}}</h4>
+		<p>Qty: <input name="quantity" type="number" min="0" max="12" step="1" value="{{{quantity}}}" /></p>
+		<p data-tmpl="delivery-options" data-watch="record-{{{id}}}"></p>
+		<p>
+			<button onclick="Page.cancelEdit({{{id}}});" type="button" name="action" value="cancel">Cancel</button>
+			<button type="submit" name="action" value="save">Save</button>
+		</p>
+	</form>
+`);
+
+Snap.setTemplate('delivery-options',`
+	<label>Delivery:
+		<select name="{{{delivery.name}}}">
+			{{#each delivery.options}}
+			<option value="{{{value}}}" {{#if selected}}selected{{/if}}>{{{name}}}</option>
+			{{/each}}
+		<select>
+	</label>
+`);
+
+Snap.setDataConfig('records',{
+	process:function(data){
+		$.each(data.entries,function(i,e){
+			e.tmpl = 'record-view';
+			e.delivery = {
+				name:"deliveryMethod",
+				options:[
+					{name:"*", value:""},
+					{name:"Ground", value:"ground"},
+					{name:"Air", value:"air"}
+				]
+			}
+
+			$.each(e.delivery.options, function(ii,ee){
+				ee.selected = ee.value===e.deliveryMethod;
+			});
+
+			Snap.setData('record-'+e.id,e);
+			Snap.setTemplate('record-'+e.id,Snap.getTemplate('record-render'));
+		});
+		return data;
+	}
+});
+
+Snap.request({
+	dataKey:'records',
+	url:'/js/test-data.json'
+});
+
+Snap.render();
+
+</script>
+</html>

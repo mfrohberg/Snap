@@ -1,15 +1,17 @@
 {
 	"name":"Jason",
-	"products":[
+	"entries":[
 		{
 			"id":123,
 			"name":"Product 1",
-			"quantity":1
+			"quantity":1,
+			"deliveryMethod":"ground"
 		},
 		{
 			"id":5886,
 			"name":"Product 2",
-			"quantity":6
+			"quantity":6,
+			"deliveryMethod":"air"
 		}
 	]
 }
