@@ -325,6 +325,10 @@ var Snap = (function(){
 		nextRequest();
 	}
 
+	function setDebug(active){
+		debug = !!active;
+	}
+
 	return {
 		request:request,
 		addController:addController,
@@ -337,7 +341,8 @@ var Snap = (function(){
 		dispatchChange:dispatchChange,
 		getData:getData,
 		setData:setData,
-		setDataConfig:setDataConfig
+		setDataConfig:setDataConfig,
+		setDebug:setDebug
 	}
 
 })();
