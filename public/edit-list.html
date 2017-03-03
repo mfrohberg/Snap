@@ -5,6 +5,8 @@
 <title>Snap Test</title>
 <meta name="viewport" content="width=480, initial-scale=1.0, maximum-scale=1">
 
+<link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+
 <script src="/js/lib/jquery.min.js"></script>
 <script src="/js/lib/handlebars-v4.0.5.js"></script>
 <script src="/js/Snap.js"></script>
@@ -12,6 +14,9 @@
 
 <style type="text/css">
 
+body {
+	padding: 10px;
+}
 .record {
 	border:1px solid #CCC;
 	box-sizing: border-box;
@@ -43,18 +48,29 @@
 // add templates - import from files or precompile
 
 Snap.setTemplate('records',`
-	{{#each entries}}
-	<div data-tmpl="record-{{{id}}}"></div>
-	{{/each}}
+	<div class="panel panel-default" data-mode="view">
+		<div class="panel-heading">{{{name}}}</div>
+		<div class="panel-body">
+			{{#each entries}}
+			<div data-tmpl="record-{{{id}}}"></div>
+			{{/each}}
+		</div>
+		<div class="panel-footer">
+		{{#each actions}}
+		{{>button}}
+		{{/each}}
+		</div>
+	</div>
 `);
 
-Snap.setTemplate('record-render',`{{snaptmpl tmpl this}}`);
+Snap.setTemplate('button','<a href="url">{{{name}}}</a>');
 
 Snap.setTemplate('record-view',`
 	<div class="record" record-id="{{{id}}}" onclick="Page.editRecord(this,{{{id}}})">
 		<div>
 			<h4>{{name}}</h4>
 			<p>Qty: {{{quantity}}}</p>
+			<p>Delivery: {{{deliveryMethod}}}</p>
 		</div>
 	</div>
 `);
@@ -67,8 +83,9 @@ Snap.setTemplate('record-edit',`
 			<p>Qty: <input name="quantity" type="number" min="0" max="12" step="1" value="{{{quantity}}}" required /></p>
 			<p data-tmpl="delivery-options" data-watch="record-{{{id}}}"></p>
 			<p>
-				<button onclick="Page.cancelEdit({{{id}}});" type="button" name="action" value="cancel">Cancel</button>
-				<button type="submit" name="action" value="save">Save</button>
+				<button class="btn btn-default" onclick="Page.cancelEdit({{{id}}});" type="button" name="action" value="cancel">Cancel</button>
+				<button class="btn btn-default" onclick="Page.deleteRecord({{{id}}});" type="button" name="action" value="delete">Delete</button>
+				<button class="btn btn-default" type="submit" name="action" value="save">Save</button>
 			</p>
 		</form>
 	</div>
@@ -89,18 +106,11 @@ Snap.setTemplate('delivery-options',`
 var Page = (function(){
 
 	function editRecord(el,id){
-		// set template to edit view
-		Snap.setData('record-'+id,function(data){
-			data.tmpl = 'record-edit';
-			return data;
-		});
+		Snap.setTemplate('record-'+id,Snap.getTemplate('record-edit'));
 	}
 
 	function cancelEdit(id){
-		Snap.setData('record-'+id,function(data){
-			data.tmpl = 'record-view';
-			return data;
-		});
+		Snap.setTemplate('record-'+id,Snap.getTemplate('record-view'));
 	}
 
 	function saveRecord(e){
@@ -113,6 +123,12 @@ var Page = (function(){
 		$.each(arr,function(i,e){
 			update[e.name] = e.value;
 		});
+
+		// 0 quantity? - just delete this
+		if(update.quantity==='0'){
+			deleteRecord(update.id);
+			return;
+		}
 
 		// validate - we should use parsley for this or some library
 		$('[name]',this).removeClass('error');
@@ -131,17 +147,18 @@ var Page = (function(){
 
 		// for testing - update local data
 		Snap.setData('record-'+update.id,function(data){
-			data.tmpl = 'record-view';
+			// mash updates into original object
 			$.extend(data,update);
 
-			// set "selected" flag on delivery options
-			// there's probably a better way to do this
+			// set "selected" flag on delivery options ?? is there a better way to do this
 			$.each(data.delivery.options, function(i,e){
 				e.selected = e.value===data.deliveryMethod;
 			});
 
 			return data;
 		});
+
+		Snap.setTemplate('record-'+update.id,Snap.getTemplate('record-view'));
 
 		// real loop will send update to server and update data
 		/*
@@ -159,11 +176,40 @@ var Page = (function(){
 		*/
 	}
 
+	function deleteRecord(id){
+		// this would send a delete request to the service which would return the updated object
+		Snap.setData('records',function(data){
+			data.entries = $.grep(data.entries,function(e){
+				return String(e.id)!==String(id);
+			});
+			return data;
+		});
+	}
+
 	// add save event handler to page
 	 $(document).on('submit','form[record-id]', saveRecord);
 
 	 Snap.setDataConfig('records',{
 		process:function(data){
+			// this need to happen every time the records are updated
+			// set the individual record data
+			$.each(data.entries,function(i,e){
+				Snap.setData('record-'+e.id,e);
+			});
+			return data;
+		}
+	});
+
+	Snap.request({
+		dataKey:'records',
+		url:'/js/test-data.json',
+		process:function(data){
+			// initial
+			// this ony needs to happen once on the loaded data
+			data.actions = [
+				{name:"hello"}
+			];
+
 			$.each(data.entries,function(i,e){
 				e.tmpl = 'record-view';
 				e.delivery = {
@@ -179,16 +225,11 @@ var Page = (function(){
 					ee.selected = ee.value===e.deliveryMethod;
 				});
 
-				Snap.setData('record-'+e.id,e);
-				Snap.setTemplate('record-'+e.id,Snap.getTemplate('record-render'));
+				Snap.setTemplate('record-'+e.id,Snap.getTemplate('record-view'));
 			});
+
 			return data;
 		}
-	});
-
-	Snap.request({
-		dataKey:'records',
-		url:'/js/test-data.json'
 	});
 
 	 // implement parsley
@@ -211,11 +252,13 @@ var Page = (function(){
 	return {
 		saveRecord:saveRecord,
 		editRecord:editRecord,
-		cancelEdit:cancelEdit
+		cancelEdit:cancelEdit,
+		deleteRecord:deleteRecord
 	}
 
 })()
 
+Snap.setDebug(0);
 Snap.render();
 
 </script>

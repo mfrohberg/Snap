@@ -12,6 +12,18 @@
 			"name":"Product 2",
 			"quantity":6,
 			"deliveryMethod":"air"
+		},
+		{
+			"id":55,
+			"name":"Product 3",
+			"quantity":10,
+			"deliveryMethod":"air"
+		},
+		{
+			"id":8976,
+			"name":"Product 4",
+			"quantity":1,
+			"deliveryMethod":"air"
 		}
 	]
 }

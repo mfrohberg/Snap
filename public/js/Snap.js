@@ -73,6 +73,7 @@ var Snap = (function(){
 	// this helper allow dynamic templates in Handlebars
 	// great for dynamic pages/SPA style stuff
 	Handlebars.registerHelper('snaptmpl', function(template, context) {
+		if(!template || !context) return '';
 		var tmpl = Handlebars.partials[template];
 		//console.log('snaptmpl',template,'==',tmpl,'context',context);
 	    //return tmpl ? new Handlebars.SafeString('<div data-tmpl="'+template+'">'+tmpl(context)+'</div>') : "";
@@ -99,19 +100,11 @@ var Snap = (function(){
 		var config = getElementConfig(el);
 
 		function renderElement(data){
-			config.$el.html(config.tmpl(data));
+			config.$el.html(templates[config.tmpl](data));
 			render(config.$el);
 		}
 
-		function getConfig(){
-			return config;
-		}
-		//watchData(getElementConfig(el).dataKey,renderElement);
 		watchData(config.dataKey,renderElement);
-
-		return {
-			getConfig:getConfig
-		}
 	}
 
 	//
@@ -146,7 +139,8 @@ var Snap = (function(){
 				index:refIndex,
 				$el:$(e),
 				el:$(e)[0],
-				tmpl:getTemplate(tmpl),
+				tmpl:tmpl,
+				//tmpl:getTemplate(tmpl),
 				ctrl:getController(ctrl),
 				dataKey:dataKey,
 				lastRendered:0, 

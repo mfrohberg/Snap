@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Snap Test</title>
+<meta name="viewport" content="width=480, initial-scale=1.0, maximum-scale=1">
+
+<link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+
+<script src="/js/lib/jquery.min.js"></script>
+<script src="/js/lib/handlebars-v4.0.5.js"></script>
+<script src="/js/Snap.js"></script>
+<script src="/js/lib/parsley.min.js"></script>
+
+<style type="text/css">
+
+body {
+	padding: 10px;
+}
+.record {
+	border:1px solid #CCC;
+	box-sizing: border-box;
+	padding: 10px;
+	margin: 10px;
+}
+.record:hover {
+	border:1px solid #000;
+}
+.error {
+	border: 3px solid #CC3300;
+}
+</style>
+
+</head>
+
+<body>
+	
+	<div data-tmpl="button">
+	</div>
+
+</body>
+
+
+
+<script type="text/javascript">
+
+
+// add templates - import from files or precompile
+
+function changeMe(){
+	Snap.setTemplate('button','<h3>{{{name}}}</h3>');
+}
+
+Snap.setTemplate('button','<button onclick="changeMe()">{{{name}}}</button>');
+
+Snap.setTemplate('record-render',`{{snaptmpl tmpl this}}`);
+
+Snap.setData('button',{name:'my button'});
+
+Snap.setDebug(1);
+Snap.render();
+
+</script>
+</html>
