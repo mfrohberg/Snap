@@ -76,13 +76,15 @@ Snap.setTemplate('record-edit',`
 	<div class="record">
 		<form record-id="{{{id}}}">
 			<input type="hidden" name="id" value="{{{id}}}" />
-			<h4>{{name}}</h4>
+			<h4>{{>text-input label="Name" name="name" value=name}}</h4>
 			<p>Qty: <input name="quantity" type="number" min="0" max="12" step="1" value="{{{quantity}}}" required /></p>
 			<p>{{>dropdown delivery}}</p>
 			<p>{{#each actions}}{{>button}}{{/each}}</p>
 		</form>
 	</div>
 `);
+
+Snap.setTemplate('text-input','<label>{{{label}}}</label><input type="text" name="{{{name}}}" value="{{{value}}}" />');
 
 Snap.setTemplate('dropdown',`
 	<label>{{label}}:</label>
@@ -191,24 +193,6 @@ var Page = (function(){
 			// this need to happen every time the records are updated
 			// set the individual record data
 			$.each(data.entries,function(i,e){
-				Snap.setData('record-'+e.id,e);
-			});
-			return data;
-		}
-	});
-
-	Snap.request({
-		dataKey:'records',
-		url:'/js/test-data.json',
-		process:function(data){
-			// initial
-			// this ony needs to happen once on the loaded data
-			data.actions = [
-				{name:"hello"}
-			];
-
-			$.each(data.entries,function(i,e){
-				e.tmpl = 'record-view';
 				e.delivery = {
 					label:'Delivery',
 					name:"deliveryMethod",
@@ -230,12 +214,42 @@ var Page = (function(){
 					ee.selected = ee.value===e.deliveryMethod;
 				});
 
+				Snap.setData('record-'+e.id,e);
+			});
+			return data;
+		}
+	});
+
+	Snap.request({
+		dataKey:'records',
+		url:'/js/test-data.json',
+		process:function(data){
+			// initial
+			// this ony needs to happen once on the loaded data
+			data.actions = [
+				{name:"Create Record", onclick:"Page.createRecord()"}
+			];
+			// create a separate data container for each entry
+			$.each(data.entries,function(i,e){
 				Snap.setTemplate('record-'+e.id,Snap.getTemplate('record-view'));
 			});
 
 			return data;
 		}
 	});
+
+	function createRecord(){
+ 		Snap.setData('records',function(data){
+ 			data.entries.push({
+				"id":0,
+				"name":"Enter Product..",
+				"quantity":1,
+				"deliveryMethod":""
+			});
+			return data;
+ 		});
+ 		Snap.setTemplate('record-0',Snap.getTemplate('record-view'));
+	}
 
 	 // implement parsley
 	 /*
@@ -258,6 +272,7 @@ var Page = (function(){
 		saveRecord:saveRecord,
 		editRecord:editRecord,
 		cancelEdit:cancelEdit,
+		createRecord:createRecord,
 		deleteRecord:deleteRecord
 	}
 
