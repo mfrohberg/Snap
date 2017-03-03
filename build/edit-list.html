@@ -44,7 +44,6 @@ body {
 
 <script type="text/javascript">
 
-
 // add templates - import from files or precompile
 
 Snap.setTemplate('records',`
@@ -63,10 +62,8 @@ Snap.setTemplate('records',`
 	</div>
 `);
 
-Snap.setTemplate('button','<a href="url">{{{name}}}</a>');
-
 Snap.setTemplate('record-view',`
-	<div class="record" record-id="{{{id}}}" onclick="Page.editRecord(this,{{{id}}})">
+	<div class="record" record-id="{{{id}}}" onclick="Page.editRecord({{{id}}})">
 		<div>
 			<h4>{{name}}</h4>
 			<p>Qty: {{{quantity}}}</p>
@@ -81,44 +78,41 @@ Snap.setTemplate('record-edit',`
 			<input type="hidden" name="id" value="{{{id}}}" />
 			<h4>{{name}}</h4>
 			<p>Qty: <input name="quantity" type="number" min="0" max="12" step="1" value="{{{quantity}}}" required /></p>
-			<p data-tmpl="delivery-options" data-watch="record-{{{id}}}"></p>
-			<p>
-				<button class="btn btn-default" onclick="Page.cancelEdit({{{id}}});" type="button" name="action" value="cancel">Cancel</button>
-				<button class="btn btn-default" onclick="Page.deleteRecord({{{id}}});" type="button" name="action" value="delete">Delete</button>
-				<button class="btn btn-default" type="submit" name="action" value="save">Save</button>
-			</p>
+			<p>{{>dropdown delivery}}</p>
+			<p>{{#each actions}}{{>button}}{{/each}}</p>
 		</form>
 	</div>
 `);
 
-Snap.setTemplate('delivery-options',`
-	<label>Delivery:
-		<select name="{{{delivery.name}}}" required>
-			{{#each delivery.options}}
-			<option value="{{{value}}}" {{#if selected}}selected{{/if}}>{{{name}}}</option>
-			{{/each}}
-		<select>
-	</label>
+Snap.setTemplate('dropdown',`
+	<label>{{label}}:</label>
+	<select name="{{{name}}}" {{#if required}}required{{/if}}>
+		{{#each options}}
+		<option value="{{{value}}}" {{#if selected}}selected{{/if}}>{{{name}}}</option>
+		{{/each}}
+	<select>
 `);
+
+Snap.setTemplate('button','<button class="btn btn-default" onclick="{{{onclick}}}" type="button">{{{name}}}</button>');
 
 // put business logic somewhere
 
 var Page = (function(){
 
-	function editRecord(el,id){
+	function editRecord(id){
 		Snap.setTemplate('record-'+id,Snap.getTemplate('record-edit'));
 	}
 
-	function cancelEdit(id){
+	function cancelEdit(form){
+		var id = $('[name="id"]',form).val();
 		Snap.setTemplate('record-'+id,Snap.getTemplate('record-view'));
 	}
 
-	function saveRecord(e){
-		// don't submit this form unless desired
-		e.preventDefault();
+	function saveRecord(form){
 
+		var $form = $(form);
 		var update = {};
-		var arr = $(this).serializeArray();
+		var arr = $form.serializeArray();
 
 		$.each(arr,function(i,e){
 			update[e.name] = e.value;
@@ -131,16 +125,16 @@ var Page = (function(){
 		}
 
 		// validate - we should use parsley for this or some library
-		$('[name]',this).removeClass('error');
+		$('[name]',$form).removeClass('error');
 
 		if(isNaN(update.quantity)){
-			$('[name="quantity"]',this).addClass('error');
+			$('[name="quantity"]',$form).addClass('error');
 			alert('Quantity value is invalid.');
 			return;
 		}
 
 		if(!update.deliveryMethod){
-			$('[name="deliveryMethod"]',this).addClass('error');
+			$('[name="deliveryMethod"]',$form).addClass('error');
 			alert('Choose a delivery option.');
 			return;
 		}
@@ -176,18 +170,21 @@ var Page = (function(){
 		*/
 	}
 
-	function deleteRecord(id){
-		// this would send a delete request to the service which would return the updated object
-		Snap.setData('records',function(data){
-			data.entries = $.grep(data.entries,function(e){
-				return String(e.id)!==String(id);
+	function deleteRecord(form){
+		if(confirm('Are you sure?')){
+			var id = $('[name="id"]',form).val();
+			// this would send a delete request to the service which would return the updated object
+			Snap.setData('records',function(data){
+				data.entries = $.grep(data.entries,function(e){
+					return String(e.id)!==String(id);
+				});
+				return data;
 			});
-			return data;
-		});
+		}
 	}
 
 	// add save event handler to page
-	 $(document).on('submit','form[record-id]', saveRecord);
+	 //$(document).on('submit','form[record-id]', saveRecord);
 
 	 Snap.setDataConfig('records',{
 		process:function(data){
@@ -213,13 +210,21 @@ var Page = (function(){
 			$.each(data.entries,function(i,e){
 				e.tmpl = 'record-view';
 				e.delivery = {
+					label:'Delivery',
 					name:"deliveryMethod",
+					required:true,
 					options:[
 						{name:"*", value:""},
 						{name:"Ground", value:"ground"},
 						{name:"Air", value:"air"}
 					]
 				}
+
+				e.actions = [
+					{onclick:"Page.cancelEdit(this.form);", name:"Cancel"},
+					{onclick:"Page.deleteRecord(this.form);", name:"Delete"},
+					{onclick:"Page.saveRecord(this.form);", name:"Save"}
+				]
 
 				$.each(e.delivery.options, function(ii,ee){
 					ee.selected = ee.value===e.deliveryMethod;
