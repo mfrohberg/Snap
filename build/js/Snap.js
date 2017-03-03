@@ -74,14 +74,10 @@ var Snap = (function(){
 	// great for dynamic pages/SPA style stuff
 	Handlebars.registerHelper('snaptmpl', function(template, context, opts) {
 		if(!template || !context) return '';
-		
 		// extend data with manually passed parameters
 		$.extend(context,opts.hash);
-
 		var tmpl = Handlebars.partials[template];
-		//console.log('snaptmpl',template,'==',tmpl,'context',context);
-	    //return tmpl ? new Handlebars.SafeString('<div data-tmpl="'+template+'">'+tmpl(context)+'</div>') : "";
-	    return new Handlebars.SafeString(tmpl(context));
+	    return tmpl ? new Handlebars.SafeString(tmpl(context)) : '';
 	});
 
 	// internal helper
@@ -144,7 +140,6 @@ var Snap = (function(){
 				$el:$(e),
 				el:$(e)[0],
 				tmpl:tmpl,
-				//tmpl:getTemplate(tmpl),
 				ctrl:getController(ctrl),
 				dataKey:dataKey,
 				lastRendered:0, 
@@ -160,7 +155,6 @@ var Snap = (function(){
 
 	function render(e,depth){
 		//console.log('Snap.render()',depth);
-
 		if(!e) e = document.body;
 		if(depth>20) return;
 		var $e = $(e);

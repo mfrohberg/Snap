@@ -76,17 +76,17 @@ Snap.setTemplate('record-edit',`
 	<div class="record">
 		<form record-id="{{{id}}}">
 			<input type="hidden" name="id" value="{{{id}}}" />
-			<h4>{{>text-input label="Name" name="name" value=name}}</h4>
+			<h4>{{>input-text label="Name" name="name" value=name}}</h4>
 			<p>Qty: <input name="quantity" type="number" min="0" max="12" step="1" value="{{{quantity}}}" required /></p>
-			<p>{{>dropdown delivery}}</p>
+			<p>{{>input-select delivery}}</p>
 			<p>{{#each actions}}{{>button}}{{/each}}</p>
 		</form>
 	</div>
 `);
 
-Snap.setTemplate('text-input','<label>{{{label}}}</label><input type="text" name="{{{name}}}" value="{{{value}}}" />');
+Snap.setTemplate('input-text','<label>{{{label}}}</label><input type="text" name="{{{name}}}" value="{{{value}}}" />');
 
-Snap.setTemplate('dropdown',`
+Snap.setTemplate('input-select',`
 	<label>{{label}}:</label>
 	<select name="{{{name}}}" {{#if required}}required{{/if}}>
 		{{#each options}}
