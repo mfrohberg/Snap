@@ -69,13 +69,14 @@ var Snap = (function(){
 	var requestStatus = 0;
 	var elementIndex = 0;
 	var elementRef = [];
+	var controlInstance = [];
 
 	// this helper allow dynamic templates in Handlebars
 	// great for dynamic pages/SPA style stuff
 	Handlebars.registerHelper('snaptmpl', function(template, context, opts) {
 		if(!template || !context) return '';
 		// extend data with manually passed parameters
-		$.extend(context,opts.hash);
+		$.extend(context,opts && opts.hash ? opts.hash : {});
 		var tmpl = Handlebars.partials[template];
 	    return tmpl ? new Handlebars.SafeString(tmpl(context)) : '';
 	});
@@ -104,16 +105,36 @@ var Snap = (function(){
 			render(config.$el);
 		}
 
+		function setConfig(update){
+			$.extend(config,update);
+			refresh();
+		}
+
+		function getConfig(update){
+			return config;
+		}
+
+		function refresh(){
+			renderElement(getData(config.dataKey));
+		}
+
 		watchData(config.dataKey,renderElement);
+
+		return {
+			setConfig:setConfig
+		}
 	}
 
-	//
 	function setController(key,func){
 		controls[key] = func;
 	}
 
 	function getController(key){
 		return controls[key] || defaultController;
+	}
+
+	function getControlInstance(i){
+		return controlInstance[parseInt(i)];
 	}
 
 	function getElementConfig(e){
@@ -163,7 +184,7 @@ var Snap = (function(){
 		if(config && config.initialized===false){
 			// init controllers on elements
 			config.initialized = true;
-			new config.ctrl(e);
+			$e.attr('snap-ctrl',controlInstance.push(new config.ctrl(e))-1);
 		}
 
 		depth = (depth || 0)+1;
@@ -204,13 +225,21 @@ var Snap = (function(){
 		var i = watchers[key].length;
 		while(i--){
 			watchers[key][i](data);
-			if(debug) console.log('--> ',i,watchers[key][i]);
+			//if(debug) console.log('--> ',i,watchers[key][i]);
 		}
 	}
 
 	function setDataConfig(key,info){
+		console.log('setDataConfig',key, datas[key])
 		var config = dataConfig[key] = $.extend(getDataConfig(key), info);
-		var data = config.defaultValue !== undefined ? config.defaultValue : null;
+
+		// if(datas[key]!=='undefined'){
+		// 	var data = datas[key];
+		// } else {
+		// 	var data = config.defaultValue !== undefined ? config.defaultValue : null;
+		// }
+
+		var data = datas[key] || config.defaultValue || null;
 
 		// grab local storage data if available
 		if(config.useLocalStorage){
@@ -219,13 +248,17 @@ var Snap = (function(){
 				try {
 					data = $.parseJSON(ls);
 				} catch(errr){
-					console.error(key,'localstorage failed json parse',data,ls);
+					if(debug) console.error(key,'localstorage failed json parse',data,ls);
 				}
 			}
 		}
 
 		if(config.process && $.isFunction(config.process)){
-			data = config.process(data);
+			try {
+				data = config.process(data);
+			} catch(err) {
+				if(debug) console.error('Snap.setDataConfig() config.process',key);
+			}
 		}
 		setData(key,data);
 	}
@@ -263,7 +296,7 @@ var Snap = (function(){
 		config.changeIndex++;
 
 		//console.log('Snap.setData()',key,data);
-		options = $.extend(options || {},{overwrite:false, triggerChange:true});
+		options = $.extend({overwrite:false, triggerChange:true},options || {});
 		var update = data;
 
 		if($.isFunction(data)){
@@ -291,7 +324,11 @@ var Snap = (function(){
 		}
 		// run process if specified
 		if(config.process){
-			update = config.process(update,datas[key]);
+			try {
+				update = config.process(update,datas[key]);
+			} catch(err) {
+				if(debug) console.error('Snap.setData() config.process',key);
+			}
 		}
 		if(debug) console.log('--> ','update',update);
 		// commit data
@@ -339,6 +376,7 @@ var Snap = (function(){
 		request:request,
 		setController:setController,
 		getController:getController,
+		getControlInstance:getControlInstance,
 		render:render,
 		addTemplate:addTemplate,
 		setTemplate:setTemplate,

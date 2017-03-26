@@ -1,0 +1,325 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Snap Test</title>
+<meta name="viewport" content="width=480, initial-scale=1.0, maximum-scale=1">
+
+<link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+
+<script src="/js/lib/jquery.min.js"></script>
+<script src="/js/lib/handlebars-v4.0.5.js"></script>
+<script src="/js/Snap.js"></script>
+<script src="/js/lib/parsley.min.js"></script>
+<script src="/js/ManageRecords.js"></script>
+
+<style type="text/css">
+
+body {
+	padding: 10px;
+}
+.record {
+	border:1px solid #CCC;
+	box-sizing: border-box;
+	padding: 10px;
+	margin: 10px;
+}
+.record:hover {
+	border:1px solid #000;
+}
+.error {
+	border: 3px solid #CC3300;
+}
+</style>
+
+</head>
+
+<body>
+	
+	<div data-tmpl="user-record"></div>
+
+	<!-- <div data-tmpl="order-address">
+	</div>
+	<div data-tmpl="customer-addresses"></div> -->
+</body>
+
+
+
+<script type="text/javascript">
+
+// add templates - import from files or precompile
+
+Snap.request({
+	dataKey:'user-record',
+	url:'/js/user-record.json'
+});
+
+Snap.setDataConfig('user-record',{
+	defaultValue:{
+		addresses:[],
+		paymentMethods:[]
+	},
+	process:function(data){
+		console.log('process','user-record')
+		if(data.addresses){
+			// expose addresses as data array
+
+			// add custom option to address options
+			var arr = [{name:"Custom", value:"custom", id:"custom"}].concat(data.addresses);
+
+			// extend address to work with the select component
+			arr = $.map(arr, function(e){
+				return $.extend({
+					name:e.name || e.label,//[e.label,e.addr1,e.city,e.usstate].join(), 
+					value:e.id,
+					selected:String(e.id)===String(data.primaryAddressId)
+				},e);
+			})
+
+			// find selected address and expose as unique data set
+			var selectedAddress = $.grep(arr, function(e){
+				return e.selected;
+			})[0];
+
+			Snap.setData('selected-address', selectedAddress, {overwrite:true});
+
+			// if address is custom the UI should be a form else just show the address
+			if(selectedAddress.id==='custom'){
+				// custom address is a form
+				Snap.setTemplate('selected-address',Snap.getTemplate('input-address'));
+			} else {
+				// pull from saved address and display
+				Snap.setTemplate('selected-address',Snap.getTemplate('display-address'));
+			}
+
+			// write address options object for use in form
+			data.addressOptions = {
+				label:'Saved Addresses',
+				options:arr
+			};
+		}
+
+		if(data.paymentMethods){
+			Snap.setData('customer-payments',{
+				label:'Payment Methods',
+				options:$.map(data.paymentMethods, function(e){
+					var selected = e.id===data.primaryPaymentMethod;
+					if(selected){
+						data.selectedPaymentMethod = e;
+					}
+					return {
+						name:[e.name,e.ssn].join(), 
+						value:e.id,
+						selected:e.id===data.primaryPaymentMethod
+					};
+				})
+			});
+		}
+
+		return data;
+	}
+})
+
+function selectAddress(el){
+	var ctrl_index = $(el).parents('[snap-ctrl]').attr('snap-ctrl');
+	var ctrl = Snap.getControlInstance(ctrl_index);
+	console.log(ctrl);
+}
+
+function editOrderAddress(el){
+
+	var ctrl_index = $(el).parents('[snap-ctrl]').attr('snap-ctrl');
+	//var c = Snap.getControlInstance(c_index).setTemplateKey('input-address');
+
+	Snap.getControlInstance(ctrl_index).setConfig({tmpl:'input-address'});
+	//console.log('c_inde',c_index,c);
+	//c.setTemplate('input-address');
+
+	//Snap.setTemplate('order-address',Snap.getTemplate('input-address'));
+}
+
+function changeAddress(el){
+	Snap.setData('user-record',function(data){
+		data.primaryAddressId = $(el).val();
+		return data;
+	})
+}
+
+function saveAddress(el){
+	console.log($(el).val());
+
+	var $form = $(el.form);
+	var update = {};
+	var arr = $form.serializeArray();
+
+	$.each(arr,function(i,e){
+		update[e.name] = e.value;
+	});
+
+	//console.log('update',update);
+
+	var ctrl_index = $(el).parents('[snap-ctrl]').attr('snap-ctrl');
+
+	Snap.getControlInstance(ctrl_index).setConfig({tmpl:'display-address'});
+//	var c = Snap.getControlInstance(c_index).setDataKey('input-address');
+
+}
+
+// Snap.setData('order-address',{
+// 	addr1:'31 Clinton St.',
+// 	addr2:'#2b',
+// 	city:'Bloomfield',
+// 	usstate:'NJ',
+// 	zipcode:'07003',
+// 	options:Snap.getData('customer-addresses')
+// });
+
+//Snap.watchData('customer-addresses',function(data){
+	// var addr = $.grep(data.entries,function(e){
+	// 	return e.label==='Home';
+	// })[0];
+
+	// addr.addresses = {
+	// 	label:'Saved Addresses',
+	// 	options:$.map(data.entries, function(e){
+	// 		return {label:e.label, name:[e.label,e.addr1,e.city,e.usstate].join(), value:e.id};
+	// 	})
+	// }
+
+	// Snap.setData('order-address', addr);
+//})
+
+Snap.setTemplate('display-address',`
+	<div>
+		<p>{{label}}</p>
+		<p>{{addr1}}</p>
+		<p>{{addr2}}</p>
+		<p>{{city}}, {{usstate}} {{zipcode}}</p>
+	</div>
+`);
+
+		// <button onclick="editOrderAddress(this)">Edit</button>
+// <div>{{>input-select addresses onchange="changeAddress(this)"}}</div>
+			// <div data-tmpl="input-select" data-watch="customer-payments"></div>
+			// <div data-tmpl="input-select" data-watch="customer-addresses"></div>
+			// <div><button type="button" onclick="saveAddress(this)">Save</button></div>
+
+Snap.setTemplate('input-address',`
+	<div>
+		<form onsubmit="return false">
+			<p>{{>input-text label="Address (line 1)" name="addr1" value=addr1}}</p>
+			<p>{{>input-text label="Address (line 2)" name="addr2" value=addr2}}</p>
+			<p>{{>input-text label="City" name="city" value=city}}</p>
+			<p>{{>input-text label="State" name="usstate" value=usstate}}</p>
+			<p>{{>input-text label="Zip Code" name="zipcode" value=zipcode}}</p>
+		</form>
+	</div>
+`);
+
+Snap.setTemplate('user-record',`
+	<div>{{>input-select addressOptions onchange="changeAddress(this)"}}</div>
+	<div class="well" data-tmpl="selected-address"></div>
+`)
+
+Snap.setTemplate('customer-addresses',`
+	{{#each entries}}<div class="panel panel-default"><div class="panel-body">{{>display-address}}</div></div>{{/each}}
+`)
+
+//Snap.setTemplate('order-address',Snap.getTemplate('display-address'));
+
+Snap.setTemplate('selected-address',Snap.getTemplate('display-address'));
+
+// Snap.setTemplate('records-entry-edit',`
+// 	<div class="record">
+// 		<form onsubmit="return false;">
+// 			<input type="hidden" name="id" value="{{{id}}}" />
+// 			<p>{{>input-text label="Name" name="name" value=name}}</p>
+// 			<p>{{>input-step name="quantity" label="Quantity" value=quantity}}</p>
+// 			<p>{{>input-select delivery}}</p>
+// 			<p>{{#each actions}}{{>button}}{{/each}}</p>
+// 		</form>
+// 	</div>
+// `);
+
+Snap.setTemplate('input-text',
+	`<label>{{{label}}}</label><input type="text" name="{{{name}}}" value="{{{value}}}" />`
+);
+
+Snap.setTemplate('input-step',
+	`<label>{{{label}}}</label><input name="{{{name}}}" type="number" min="{{#if min}}{{{min}}}{{else}}0{{/if}}" {{#if max}}max="{{{max}}}"{{/if}} step="{{#if step}}{{{step}}}{{else}}1{{/if}}" value="{{{value}}}" {{#if required}}required{{/if}} />`
+);
+
+Snap.setTemplate('input-select',`
+	<label>{{label}}:</label>
+	<select name="{{{name}}}" {{#if required}}required{{/if}} {{#if onchange}}onchange="{{{onchange}}}"{{/if}}>
+		{{#each options}}
+		<option value="{{{value}}}" {{#if selected}}selected{{/if}}>{{{name}}}</option>
+		{{/each}}
+	<select>
+`);
+
+Snap.setTemplate('ul','<ul>{{#each this}}<li>{{name}}</li>{{/each}}</ul>');
+
+Snap.setTemplate('button','<button class="btn btn-default" onclick="{{{onclick}}}" type="button">{{{name}}}</button>');
+
+/*
+var RecordBase = {
+	"id":0,
+	"name":"Product Name",
+	"quantity":1,
+	"deliveryMethod":"ground",
+	delivery:{
+		label:'Delivery',
+		name:"deliveryMethod",
+		required:true,
+		options:[
+			{name:"*", value:""},
+			{name:"Ground", value:"ground"},
+			{name:"Air", value:"air"}
+		]
+	},
+	actions:[
+		{onclick:"RecordManager.cancel(this.form);", name:"Cancel"},
+		{onclick:"RecordManager.remove(this.form);", name:"Delete"},
+		{onclick:"RecordManager.save(this.form);", name:"Save"}
+	]
+}
+var RecordManager = new ManageRecords({
+	dataKey:'records',
+	blankEntry:RecordBase
+});
+
+Snap.setDataConfig('records',{
+	process:function(data){
+		// this need to happen every time the records are updated
+		// set the individual record data
+		$.each(data.entries,function(i,e){
+			// crap
+			e = data.entries[i] = $.extend({},RecordBase,e);
+
+			$.each(e.delivery.options, function(ii,ee){
+				ee.selected = ee.value===e.deliveryMethod;
+			});
+		});
+		return data;
+	}
+});
+
+Snap.request({
+	dataKey:'records',
+	url:'/js/test-data.json',
+	process:function(data){
+		// this ony needs to happen once on the loaded data
+		data.actions = [
+			{name:"Create Record", onclick:"RecordManager.create()"}
+		];
+		Snap.setData('list',data.list);
+		return data;
+	}
+});
+*/
+Snap.setDebug(0);
+Snap.render();
+
+</script>
+</html>

@@ -21,11 +21,32 @@ Snap connects an element->template->data->controller
 
 
 2) Add templates
-	Snap.addTemplate('my-data','{{name}}');
+	Snap.setTemplate('my-data','{{name}}');
 
 
 3) Add data
+
+	Snap.setData([KEY],[DATA],[OPTIONS]);
+
+	KEY: reference name of data object
+
+	DATA: new data object
+
+	OPTIONS: tweak the update process
+
+		- deep:true (default false): 
+			true: uses $.extend(true,OLD-DATA, DATA)
+			false: uses $.extend(OLD-DATA, DATA)
+
+		- overwrite:true (default false)
+			true: replace data entirely
+			false: runs $.extend on the old data
+	
+	Usage:
+
 	Snap.setData('my-data',{name:"My Object Name"});
+
+	Snap.setData('my-data',{name:"My Object Name"},{overwrite:true});
 
 
 Options:

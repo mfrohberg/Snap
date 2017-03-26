@@ -1,5 +1,5 @@
 {
-	"name":"Jason",
+	"name":"List of Records",
 	"entries":[
 		{
 			"id":123,
@@ -25,5 +25,11 @@
 			"quantity":1,
 			"deliveryMethod":"air"
 		}
+	],
+	"list":[
+		{"id":1, "name":"Jason"},
+		{"id":2, "name":"Kris"},
+		{"id":3, "name":"Kai"},
+		{"id":4, "name":"Maddy"}
 	]
 }

@@ -10,6 +10,7 @@ var cssmin = require('gulp-cssmin');
 var watch = require('gulp-watch');
 var htmlclean = require('gulp-htmlclean');
 var clean = require('gulp-clean');
+var rename = require('gulp-rename');
 //var stripcomments = require('gulp-strip-comments');
 //var stripcomments = require('remove-html-comments');
 
@@ -43,6 +44,14 @@ gulp.task('jsmin', ['html','clean'], function() {
     .pipe(gulp.dest('./public'));
 });
 
-gulp.task('default',['html','jsmin','clean'],function(){
+gulp.task('snapmin', function() {
+    return gulp
+    .src('./build/js/Snap.js')
+    .pipe(uglify())
+    .pipe(rename('Snap.min.js'))
+    .pipe(gulp.dest('./public/js/'));
+});
+
+gulp.task('default',['snapmin','html','jsmin','clean'],function(){
 	return gulp;
 });

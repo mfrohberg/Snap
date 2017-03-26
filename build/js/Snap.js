@@ -15,10 +15,31 @@ Snap connects an element->template->data->controller
 
 
 2) Add templates
-	Snap.addTemplate('my-data','{{name}}');
+	Snap.setTemplate('my-data','{{name}}');
 
 3) Add data
+
+	Snap.setData([KEY],[DATA],[OPTIONS]);
+
+	KEY: reference name of data object
+
+	DATA: new data object
+
+	OPTIONS: tweak the update process
+
+		- deep:true (default false): 
+			true: uses $.extend(true,OLD-DATA, DATA)
+			false: uses $.extend(OLD-DATA, DATA)
+
+		- overwrite:true (default false)
+			true: replace data entirely
+			false: runs $.extend on the old data
+	
+	Usage:
+
 	Snap.setData('my-data',{name:"My Object Name"});
+
+	Snap.setData('my-data',{name:"My Object Name"},{overwrite:true});
 
 
 Options:
@@ -27,7 +48,7 @@ Options:
 
 	Snap.setDataConfig('my-data',{
 		useLocalStorage:true, // save this locally for when user returns
-		defaultValue:[], // set default value
+		defaultData:[], // set default value
 		process:function(data){ // use pass-through function on save to manage data set
 			return $.grep(data,function(e){
 				return e!==null; // example: remove nulls from array
@@ -63,12 +84,15 @@ var Snap = (function(){
 	var controls = {};
 	var templates = {};
 	var watchers = {};
+	var watchersReuse = {};
 	var datas = {};
 	var dataConfig = {};
+	var processors = {};
 	var requestQueue = [];
 	var requestStatus = 0;
 	var elementIndex = 0;
 	var elementRef = [];
+	var controlInstance = [];
 
 	// this helper allow dynamic templates in Handlebars
 	// great for dynamic pages/SPA style stuff
@@ -96,24 +120,85 @@ var Snap = (function(){
 		return JSON.stringify(data);
 	}
 
+	function cleanupElement(el){
+		// kill watchers
+		var ctrl,c,w;
+		$('[snap-ctrl]',el).each(function(i,e){
+			ctrl = getElementController(e);
+			c = ctrl.getConfig();
+			w = ctrl.getWatcherIndex();
+			// remove from watches
+			watchers[c.dataKey][w] = null;
+			// get slot ready for reuse
+			if(!watchersReuse[c.dataKey]){
+				watchersReuse[c.dataKey] = [];
+			}
+			watchersReuse[c.dataKey].push(w);
+		})
+	}
+
 	function defaultController(el){
 		var config = getElementConfig(el);
 
 		function renderElement(data){
+			cleanupElement(config.$el);
 			config.$el.html(getTemplate(config.tmpl)(data));
 			render(config.$el);
 		}
 
-		watchData(config.dataKey,renderElement);
+		function setConfig(update){
+			$.extend(config,update);
+			refresh();
+		}
+
+		function getConfig(update){
+			return config;
+		}
+
+		function refresh(){
+			renderElement(getData(config.dataKey));
+		}
+
+		var watcherIndex = watchData(config.dataKey,renderElement);
+
+		function getWatcherIndex(){
+			return watcherIndex;
+		}
+
+		return {
+			setConfig:setConfig,
+			getConfig:getConfig,
+			getWatcherIndex:getWatcherIndex
+		}
 	}
 
-	//
 	function setController(key,func){
 		controls[key] = func;
 	}
 
 	function getController(key){
 		return controls[key] || defaultController;
+	}
+
+	function getControlInstance(i){
+		return controlInstance[parseInt(i)];
+	}
+
+	function getElementController(el){
+		var i;
+		var hasCtrl = $(el)[0].hasAttribute('snap-ctrl');
+		if(hasCtrl){
+			i = $(el).attr('snap-ctrl');
+			return getControlInstance(i);
+		} else {
+			var p = $(el).parents('[snap-ctrl]');
+
+			if(p.length>0){
+				i = $(p).attr('snap-ctrl');
+				return getControlInstance(i);
+			}
+		}
+		return null;
 	}
 
 	function getElementConfig(e){
@@ -154,7 +239,7 @@ var Snap = (function(){
 	}
 
 	function render(e,depth){
-		//console.log('Snap.render()',depth);
+		if(debug>3) console.log('Snap.render()',depth);
 		if(!e) e = document.body;
 		if(depth>20) return;
 		var $e = $(e);
@@ -163,7 +248,7 @@ var Snap = (function(){
 		if(config && config.initialized===false){
 			// init controllers on elements
 			config.initialized = true;
-			new config.ctrl(e);
+			$e.attr('snap-ctrl',controlInstance.push(new config.ctrl(e))-1);
 		}
 
 		depth = (depth || 0)+1;
@@ -173,13 +258,8 @@ var Snap = (function(){
 		});
 	}
 
-	function addTemplate(key,data){
-		templates[key] = $.type(data)==='string' ? Handlebars.compile(data) : data;
-		Handlebars.registerPartial(key,templates[key]);
-	}
-
 	function setTemplate(key,data){
-		if(debug) console.log('Snap.setTemplate()',key,data);
+		if(debug>1) console.log('Snap.setTemplate()',key);//,data);
 		templates[key] = $.type(data)==='string' ? Handlebars.compile(data) : data;
 		Handlebars.registerPartial(key,templates[key]);
 		dispatchChange(key);
@@ -190,27 +270,65 @@ var Snap = (function(){
 	}
 
 	function watchData(key,cb){
+		if(debug>1) console.log('watchData',key);
 		if(!watchers[key]){
 			watchers[key] = [];
 		}
-		watchers[key].push(cb);
-		cb(getData(key));
+		var watchIndex;
+
+		// lets reuse watch index to avoid bloat in the array
+		if(watchersReuse[key] && watchersReuse[key].length>0){
+			watchIndex = watchersReuse[key].pop();
+			watchers[key][watchIndex] = cb;
+		} else {
+			watchIndex = watchers[key].push(cb)-1;
+		}
+
+		//var watchIndex = watchers[key].push(cb)-1;
+		var data = getData(key);
+		// putting this here makes the nav disappear - not sure the root cause
+		//if(data!==null){
+			cb(data);
+		//} else {
+		//}
+		return watchIndex;
+	}
+
+	function audit(){
+		var i = 0;
+		for(var e in watchers){
+			i += watchers[e].length;
+		}
+		console.log('TOTAL WATCHERS:',i);
 	}
 
 	function dispatchChange(key){
-		if(debug) console.log('Snap.dispatchChange()',key);
+		if(debug>2) console.log('Snap.dispatchChange()',key);
 		if(!watchers[key]) return;
 		var data = getData(key);
+		// don't trigger render on null data
+		if(data===null) return;
 		var i = watchers[key].length;
 		while(i--){
-			watchers[key][i](data);
-			if(debug) console.log('--> ',i,watchers[key][i]);
+			if(watchers[key][i]) watchers[key][i](data);
 		}
 	}
 
 	function setDataConfig(key,info){
+		if(debug>1) console.log('Snap.setDataConfig',key);//, datas[key])
 		var config = dataConfig[key] = $.extend(getDataConfig(key), info);
-		var data = config.defaultValue !== undefined ? config.defaultValue : null;
+
+		if(info.defaultValue){
+			alert('Snap update: Change defaultValue to defaultData in '+key );
+		}
+
+		// if(datas[key]!=='undefined'){
+		// 	var data = datas[key];
+		// } else {
+		// 	var data = config.defaultData !== undefined ? config.defaultData : null;
+		// }
+
+		var data = datas[key] || config.defaultData || null;
 
 		// grab local storage data if available
 		if(config.useLocalStorage){
@@ -219,20 +337,26 @@ var Snap = (function(){
 				try {
 					data = $.parseJSON(ls);
 				} catch(errr){
-					console.error(key,'localstorage failed json parse',data,ls);
+					if(debug) console.error(key,'localstorage failed json parse',data,ls);
 				}
 			}
 		}
 
 		if(config.process && $.isFunction(config.process)){
-			data = config.process(data);
+			try {
+				data = config.process(data);
+			} catch(err) {
+				if(debug) console.error('Snap.setDataConfig() config.process',key);
+			}
 		}
-		setData(key,data);
+		if(data){
+			setData(key,data);
+		}
 	}
 
 	function getDataConfig(key){
 		return dataConfig[key] || {
-			defaultValue:'',
+			defaultData:'',
 			useLocalStorage:false,
 			process:false,
 			changeIndex:0
@@ -240,21 +364,28 @@ var Snap = (function(){
 	}
 
 	function getData(key){
-		if(debug) console.log('Snap.getData()',key);
+		if(debug>1) console.log('Snap.getData()',key);
 		var data = null;
-		if(datas[key]){
+		if(key in datas){//datas[key]){
 			data = datas[key];
 		} else {
 			var config = dataConfig[key];
-			if(config && config.defaultValue){
-				data = config.defaultValue;
+			if(config && config.defaultData){
+				data = config.defaultData;
 			}
 		}
+		// this should clone so the object is immutable
+		// clone function doesn't work on object that has back references
+		// try {
+		// 	data = $.extend(true,{},data)
+		// } catch(err){
+		// 	console.warn('Snap.getData()',key,'object can not be cloned')
+		// }
 		return data;
 	}
 
 	function setData(key, data, options){
-		if(debug) console.log('Snap.setData()',key,data);
+		if(debug) console.log('Snap.setData()',key);//,data);if(debug>0) 
 		// init config if not set
 		if(!dataConfig[key]){
 			dataConfig[key] = {changed:true};
@@ -262,12 +393,12 @@ var Snap = (function(){
 		var config = dataConfig[key];
 		config.changeIndex++;
 
-		//console.log('Snap.setData()',key,data);
-		options = $.extend(options || {},{overwrite:false, triggerChange:true});
+		options = $.extend({overwrite:false, triggerChange:true},options || {});
 		var update = data;
+		var currentData = getData(key);
 
 		if($.isFunction(data)){
-			update = data(getData(key));
+			update = data(currentData);
 		} else {
 			if(datas[key] && options.overwrite!==true){
 				switch($.type(datas[key])){
@@ -278,7 +409,11 @@ var Snap = (function(){
 						update = data;
 						break;
 					case 'object' :
-						update = $.extend(true,{},datas[key],data);
+						if(options.deep===true){
+							update = $.extend(true,{},currentData,data);
+						} else {
+							update = $.extend({},currentData,data);
+						}
 						break;
 					case 'string' :
 					case 'number' :
@@ -291,9 +426,19 @@ var Snap = (function(){
 		}
 		// run process if specified
 		if(config.process){
-			update = config.process(update,datas[key]);
+			try {
+				update = config.process(update,currentData);
+			} catch(err) {
+				if(debug) console.error('Snap.setData() config.process',key);
+			}
 		}
-		if(debug) console.log('--> ','update',update);
+		if(processors[key]){
+			var i = processors[key].length;
+			while(i--){
+				update = processors[key][i](update,currentData);
+			}
+		}
+		//if(debug) console.log('--> ','update',update);
 		// commit data
 		datas[key] = update;
 
@@ -307,10 +452,21 @@ var Snap = (function(){
 		}
 	}
 
+	function addProcess(key, func){
+		if(!processors[key]){
+			processors[key] = [];
+		}
+		processors[key].push(func);
+	}
+
 	function nextRequest(){
 		if(requestStatus>0) return;
 		requestStatus = 1;
 		var entry = requestQueue.pop();
+		if(!entry.dataType){
+			entry.dataType = 'json';
+		}
+		if(debug>0) console.log('Snap.request()',entry);
 		$.ajax(entry).done(function(data){
 			if(this.process){
 				data = this.process(data);
@@ -332,15 +488,18 @@ var Snap = (function(){
 	}
 
 	function setDebug(active){
-		debug = !!active;
+		debug = $.isNumeric(active) ? active : active ? 1 : 0;
 	}
 
 	return {
+		audit:audit,
 		request:request,
 		setController:setController,
 		getController:getController,
+		getControlInstance:getControlInstance,
 		render:render,
-		addTemplate:addTemplate,
+		getElementConfig:getElementConfig,
+		getElementController:getElementController,
 		setTemplate:setTemplate,
 		getTemplate:getTemplate,
 		watchData:watchData,
@@ -348,7 +507,11 @@ var Snap = (function(){
 		getData:getData,
 		setData:setData,
 		setDataConfig:setDataConfig,
-		setDebug:setDebug
+		setDebug:setDebug,
+		addProcess:addProcess,
+		getWatchers:function(){
+			return watchers;
+		}
 	}
 
 })();
