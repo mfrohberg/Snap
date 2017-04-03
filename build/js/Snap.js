@@ -206,7 +206,16 @@ var Snap = (function(){
 		var el  = $(e)[0];
 		var hasTmpl = el.hasAttribute('data-tmpl');
 
-		if(!hasTmpl) return false;
+		//if(!hasTmpl) return false;
+
+		if(!hasTmpl){
+			$e = $e.parents('[data-tmpl]');
+		}
+		if($e.length===0){
+			return false;
+		} else {
+			el = $e[0];
+		}
 
 		var hasRef = el.hasAttribute('data-ref');
 		var refIndex,ref;
@@ -218,7 +227,16 @@ var Snap = (function(){
 
 			var tmpl = getAttribute($e,'data-tmpl','defaultTemplate');
 			var ctrl = getAttribute($e,'data-ctrl',tmpl);
-			var dataKey = getAttribute($e,'data-watch',tmpl);
+			//var dataKey = getAttribute($e,'data-watch',tmpl);
+			var dataKey = getAttribute($e,'data-watch',false);
+
+			if(dataKey===false){
+				dataKey = tmpl;
+				if(getData(tmpl)===null){
+					// dummy data holder
+					setData(tmpl,false);
+				}
+			}
 
 			elementRef[refIndex] = {
 				index:refIndex,
@@ -284,13 +302,10 @@ var Snap = (function(){
 			watchIndex = watchers[key].push(cb)-1;
 		}
 
-		//var watchIndex = watchers[key].push(cb)-1;
 		var data = getData(key);
-		// putting this here makes the nav disappear - not sure the root cause
-		//if(data!==null){
+		if(data!==null){
 			cb(data);
-		//} else {
-		//}
+		}
 		return watchIndex;
 	}
 
@@ -307,7 +322,7 @@ var Snap = (function(){
 		if(!watchers[key]) return;
 		var data = getData(key);
 		// don't trigger render on null data
-		if(data===null) return;
+		if(!data) return;
 		var i = watchers[key].length;
 		while(i--){
 			if(watchers[key][i]) watchers[key][i](data);
@@ -336,6 +351,7 @@ var Snap = (function(){
 			if(ls!==null && ls!=='undefined'){
 				try {
 					data = $.parseJSON(ls);
+					//data = $.extend($.parseJSON(ls),data || {})
 				} catch(errr){
 					if(debug) console.error(key,'localstorage failed json parse',data,ls);
 				}
@@ -354,6 +370,10 @@ var Snap = (function(){
 		}
 	}
 
+	function flushLocalStorage(key){
+		window.localStorage.removeItem(key);
+	}
+
 	function getDataConfig(key){
 		return dataConfig[key] || {
 			defaultData:'',
@@ -364,6 +384,9 @@ var Snap = (function(){
 	}
 
 	function getData(key){
+		if(key instanceof jQuery || (key && key.tagName)){
+			key = getElementDataKey(key);
+		}
 		if(debug>1) console.log('Snap.getData()',key);
 		var data = null;
 		if(key in datas){//datas[key]){
@@ -384,7 +407,16 @@ var Snap = (function(){
 		return data;
 	}
 
+	function getElementDataKey(el){
+		var config = getElementConfig(el);
+		return config ? config.dataKey : null;
+	}
+
 	function setData(key, data, options){
+
+		if(key instanceof jQuery || (key && key.tagName)){
+			key = getElementDataKey(key);
+		}
 		if(debug) console.log('Snap.setData()',key);//,data);if(debug>0) 
 		// init config if not set
 		if(!dataConfig[key]){
@@ -433,8 +465,9 @@ var Snap = (function(){
 			}
 		}
 		if(processors[key]){
-			var i = processors[key].length;
-			while(i--){
+			//var i = processors[key].length;
+			for(var i=0; i<processors[key].length; i++){
+			//while(i--){
 				update = processors[key][i](update,currentData);
 			}
 		}
@@ -472,7 +505,7 @@ var Snap = (function(){
 				data = this.process(data);
 			}
 			if(this.dataKey){
-				setData(this.dataKey,data);
+				setData(this.dataKey,data,{overwrite:this.overwrite===true});
 			}
 			if(this.callback){
 				this.callback(data);
@@ -509,9 +542,12 @@ var Snap = (function(){
 		setDataConfig:setDataConfig,
 		setDebug:setDebug,
 		addProcess:addProcess,
+		setProcess:addProcess,
+		getElementDataKey:getElementDataKey,
 		getWatchers:function(){
 			return watchers;
-		}
+		},
+		flushLocalStorage:flushLocalStorage
 	}
 
 })();

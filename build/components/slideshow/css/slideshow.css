@@ -1,0 +1,14 @@
+.slideshow .slide {
+	width:90%;
+	padding-top: 70%;
+	position: relative;
+}
+.slideshow .slide .slide-content {
+	position: absolute;
+	top:0;
+	left:0;
+	right:0;
+	bottom: 0;
+	border: 1px solid #CCC;
+	box-sizing: border-box;
+}
