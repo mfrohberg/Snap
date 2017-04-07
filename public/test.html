@@ -1,0 +1,244 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Snap Test</title>
+<meta name="viewport" content="width=480, initial-scale=1.0, maximum-scale=1">
+
+<link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+
+<script src="/js/lib/jquery.min.js"></script>
+<script src="/js/lib/handlebars-v4.0.5.js"></script>
+<script src="/js/Snap.js"></script>
+
+</head>
+
+<body data-tmpl="page">GHello</body>
+
+
+
+<script type="text/javascript">
+
+// put business logic somewhere
+
+var Page = (function(){
+
+	function incrementVal(){
+		Snap.setData('page-home', function(data){
+			data.n++;
+			return data;
+		});
+	}
+
+	function saveName(el){
+		Snap.setData('formData',{name:$(el).val()});
+	}
+
+	function recurse(branch,op,parent){
+		var test = op(branch,parent);
+		if(test!==false){
+			if(branch.children){
+				for(var i=0; i<branch.children.length; i++){
+					if(recurse(branch.children[i],op,branch)===true){
+						break;
+					}
+				}
+			}
+		}
+		return test;
+	}
+
+	function toggleOpened(id){
+		Snap.setData('nav',function(data){
+			recurse(data,function(branch,parent){
+				if(branch.id===id){
+					branch.opened = !branch.opened;
+					return false;
+				}
+			})
+			return data;
+		});
+	}
+
+	return {
+		incrementVal:incrementVal,
+		saveName:saveName,
+		recurse:recurse,
+		toggleOpened:toggleOpened
+	}
+
+})()
+
+
+// add templates - import from files or precompile
+
+Snap.setTemplate('nav','<ul>{{#each children}}<li><span onclick="Page.toggleOpened({{id}})">{{{name}}}</span>{{#if opened}}{{>nav}}{{/if}}</li>{{/each}}</ul>');
+
+Snap.setTemplate('page','<h3>{{name}}</h3>{{snaptmpl tmpl}}');
+
+Snap.setTemplate('formData','<h3>{{name}}</h3>');
+
+Snap.setTemplate('page-home','\
+	<div data-tmpl="button-dropdown" data-watch="drop-data"></div>\
+	<div data-tmpl="nav" data-watch="filtered-nav"></div>\
+	<h2>Count: {{n}}</h2>\
+	<div data-tmpl="formData"></div>\
+	<input name="name" value="" id="name-field" /><button onclick="Page.saveName(\'#name-field\')" class="save-btn">Save</button>\
+	<div data-tmpl="nav"></div>\
+	<button onclick="Page.incrementVal()">Add 1</button>\
+');
+
+Snap.setTemplate('button-dropdown',`<div onchange="{{{onchange}}}" {{#if id}}id="{{{id}}}"{{/if}} {{#if searchable}}searchable='{{{searchable}}}'{{/if}} class="btn-group input-group dropleft {{#if size}}input-group-{{{size}}}{{/if}} {{#if className}}{{{className}}}{{/if}}">
+	{{#if label}}<span class="input-group-addon" style="width:1%">{{{label}}}</span>{{/if}}
+	{{#if icon}}<span class="input-group-addon"><span class="glyphicon glyphicon-{{{icon}}}"></span></span>{{/if}}
+	<div class="input-group-btn" style="width: auto">
+		<button {{#if disabled}}disabled{{/if}} type="button" class="btn btn-default XXbtn-block dropdown-toggle text-left" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+			<input 
+				type="text" 
+				{{#if inputWidth}}
+					style="width:{{{inputWidth}}}px;"
+				{{/if}}
+				{{#if selectedId}}
+					value="{{#each options}}{{#ifEquals ../selectedId id}}{{{name}}}{{/ifEquals}}{{/each}}"
+				{{else}}
+					{{#if selectedValue}}
+						value="{{#each options}}{{#ifEquals ../selectedValue value}}{{{name}}}{{/ifEquals}}{{/each}}"
+					{{else}}
+						value=""
+					{{/if}}
+				{{/if}}
+				placeholder="{{#if placeholder}}{{{placeholder}}}{{else}}{{#if emptyMessage}}{{{emptyMessage}}}{{else}}Select...{{/if}}{{/if}}" 
+			/>
+			<span class="caret"></span>
+		</button>
+		<div class="dropdown-menu XXpull-right">
+			{{#if content}}
+				{{dynamictemplate content.tmpl content.data}}
+			{{else}}
+			<ul class="menu-tree">
+				{{#each options}}
+				<li><a style="display:block;" data-option-value="{{{value}}}" data-option-name="{{{name}}}" href="{{#if href}}{{{href}}}{{else}}javascript:void(0){{/if}}" {{#if onclick}}onclick="{{{onclick}}}"{{else}}{{#if ../onclick}}onclick="{{{../onclick}}}"{{/if}}{{/if}}>{{{name}}}</a></li>
+				{{/each}}
+			</ul>
+			{{/if}}
+		</div>
+	</div>
+</div>`);
+
+// initialize any data points
+
+Snap.setData('drop-data',{
+	defaultData:{
+		onchange:"alert('hi')",
+		options:[
+			{name:'option 1', value:1},
+			{name:'option 2', value:2}
+		]
+	}
+})
+Snap.setDataConfig('page',{
+	defaultData:{
+		name:'Home Page',
+		tmpl:'page-home'
+	}
+});
+
+Snap.setDataConfig('page-home',{
+	defaultData:{n:0},
+	process:function(data){
+		data.n %= 5;
+		return data;
+	}
+});
+
+Snap.setDataConfig('formData',{
+	defaultData:{
+		name:'Please enter your name'
+	},
+	useLocalStorage:true,
+	process:function(data,oldData){
+		if(!data || !data.name){
+			alert('Please enter a name!');
+			return oldData;
+		}
+		return data;
+	}
+});
+
+// Snap.setDataConfig('filtered-nav', {
+// 	source:'nav',
+// 	filter:function(data){
+// 		if(data){
+// 			console.log('filter',data)
+// 			data.name = 'filtered';
+// 		}
+// 		return data;
+// 	}
+// })
+
+Snap.watchData('nav',function(data){
+	// create a sub-set of a piece of data using watchData/setData
+	if(data){
+		data = $.extend(true,{},data);
+		
+		Page.recurse(data, function(c,p){
+			c.name = 'f '+c.name;
+		});
+
+		Snap.setData('filtered-nav',data);
+	}
+});
+
+// watch data to make any necessary changes
+
+Snap.watchData('formData',function(data){
+	Snap.setData('nav',function(navData){
+		if(navData){
+			navData.children[0].name = data.name;
+		}
+		return navData;
+	});
+});
+
+
+// optionally set nav data in config call
+
+Snap.setDataConfig('nav',{
+	useLocalStorage:true
+});
+
+Snap.setData('nav',{
+	name:'home',
+	id:1,
+	children:[
+		{
+			name:'link 1',
+			id:2
+		},
+		{
+			name:'link 2',
+			id:3,
+			children:[
+				{name:'link 6'},
+				{name:'link 7'},
+				{name:'link 8'}
+			]
+		},
+		{
+			name:'link 3',
+			id:4,
+			opened:true,
+			children:[
+				{name:'link 1'},
+				{name:'link 2'},
+				{name:'link 3'}
+			]
+		}
+	]
+});
+
+
+Snap.render();
+
+</script>
+</html>

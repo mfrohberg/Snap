@@ -99,7 +99,7 @@ var Snap = (function(){
 	Handlebars.registerHelper('snaptmpl', function(template, context, opts) {
 		if(!template || !context) return '';
 		// extend data with manually passed parameters
-		$.extend(context,opts.hash);
+		$.extend(context,opts ? opts.hash : {});
 		var tmpl = Handlebars.partials[template];
 	    return tmpl ? new Handlebars.SafeString(tmpl(context)) : '';
 	});

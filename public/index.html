@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Snap Test</title>
-<meta name="viewport" content="width=480, initial-scale=1.0, maximum-scale=1">
 
 <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
 
@@ -11,234 +10,486 @@
 <script src="/js/lib/handlebars-v4.0.5.js"></script>
 <script src="/js/Snap.js"></script>
 
-</head>
+<link rel="stylesheet" type="text/css" href="/js/lib/slick/slick.css"/>
+<link rel="stylesheet" type="text/css" href="/js/lib/slick/slick-theme.css"/>
+<script type="text/javascript" src="/js/lib/slick/slick.min.js"></script>
 
-<body data-tmpl="page"></body>
-
-
-
+<style>
+html {
+	font-size: 12px;
+}
+body {
+	padding:20px;
+}
+pre {
+	padding: 10px 10px 10px 10px;
+}
+pre,.example {
+	background-color: #EEE;
+	border-radius: 4px;
+	border: 1px solid #999;
+	margin: 20px;
+}
+pre.code {
+	font-family: courier;
+	position: relative;
+	background-color: #666;
+	color: #ffde5c;
+}
+pre.code::before {
+	content:"Javascript:";
+	font-weight: bold;
+	color:#FFF;
+	margin-bottom: 0px;
+	display: block;
+}
+pre.static {
+	font-family: Arial;
+	position: relative;
+}
+pre.static::before {
+	content:"Static HTML:";
+	font-weight: bold;
+	color:#000;
+	margin-bottom: 0px;
+	display: block;
+}
+pre.html {
+	font-family: Arial;
+	position: relative;
+}
+pre.html::before {
+	content:"Rendered HTML:";
+	font-weight: bold;
+	color:#000;
+	margin-bottom: 0px;
+	display: block;
+}
+div.example {
+	padding: 30px 10px 20px 10px;
+	font-family: Arial;
+	position: relative;
+}
+div.example::before {
+	content:"Example:";
+	font-weight: bold;
+	color:#000;
+	margin-bottom: 0px;
+	display: block;
+}
+</style>
 <script type="text/javascript">
 
-// put business logic somewhere
-
-var Page = (function(){
-
-	function incrementVal(){
-		Snap.setData('page-home', function(data){
-			data.n++;
-			return data;
-		});
-	}
-
-	function saveName(el){
-		Snap.setData('formData',{name:$(el).val()});
-	}
-
-	function recurse(branch,op,parent){
-		var test = op(branch,parent);
-		if(test!==false){
-			if(branch.children){
-				for(var i=0; i<branch.children.length; i++){
-					if(recurse(branch.children[i],op,branch)===true){
-						break;
-					}
-				}
-			}
-		}
-		return test;
-	}
-
-	function toggleOpened(id){
-		Snap.setData('nav',function(data){
-			recurse(data,function(branch,parent){
-				if(branch.id===id){
-					branch.opened = !branch.opened;
-					return false;
-				}
-			})
-			return data;
-		});
-	}
-
-	return {
-		incrementVal:incrementVal,
-		saveName:saveName,
-		recurse:recurse,
-		toggleOpened:toggleOpened
-	}
-
-})()
-
-
-// add templates - import from files or precompile
-
-Snap.addTemplate('nav','<ul>{{#each children}}<li><span onclick="Page.toggleOpened({{id}})">{{{name}}}</span>{{#if opened}}{{>nav}}{{/if}}</li>{{/each}}</ul>');
-
-Snap.addTemplate('page','<h3>{{name}}</h3>{{snaptmpl tmpl}}');
-
-Snap.addTemplate('formData','<h3>{{name}}</h3>');
-
-Snap.addTemplate('page-home','\
-	<div data-tmpl="button-dropdown" data-watch="drop-data"></div>\
-	<div data-tmpl="nav" data-watch="filtered-nav"></div>\
-	<h2>Count: {{n}}</h2>\
-	<div data-tmpl="formData"></div>\
-	<input name="name" value="" id="name-field" /><button onclick="Page.saveName(\'#name-field\')" class="save-btn">Save</button>\
-	<div data-tmpl="nav"></div>\
-	<button onclick="Page.incrementVal()">Add 1</button>\
-');
-
-Snap.addTemplate('button-dropdown',`<div onchange="{{{onchange}}}" {{#if id}}id="{{{id}}}"{{/if}} {{#if searchable}}searchable='{{{searchable}}}'{{/if}} class="btn-group input-group dropleft {{#if size}}input-group-{{{size}}}{{/if}} {{#if className}}{{{className}}}{{/if}}">
-	{{#if label}}<span class="input-group-addon" style="width:1%">{{{label}}}</span>{{/if}}
-	{{#if icon}}<span class="input-group-addon"><span class="glyphicon glyphicon-{{{icon}}}"></span></span>{{/if}}
-	<div class="input-group-btn" style="width: auto">
-		<button {{#if disabled}}disabled{{/if}} type="button" class="btn btn-default XXbtn-block dropdown-toggle text-left" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-			<input 
-				type="text" 
-				{{#if inputWidth}}
-					style="width:{{{inputWidth}}}px;"
-				{{/if}}
-				{{#if selectedId}}
-					value="{{#each options}}{{#ifEquals ../selectedId id}}{{{name}}}{{/ifEquals}}{{/each}}"
-				{{else}}
-					{{#if selectedValue}}
-						value="{{#each options}}{{#ifEquals ../selectedValue value}}{{{name}}}{{/ifEquals}}{{/each}}"
-					{{else}}
-						value=""
-					{{/if}}
-				{{/if}}
-				placeholder="{{#if placeholder}}{{{placeholder}}}{{else}}{{#if emptyMessage}}{{{emptyMessage}}}{{else}}Select...{{/if}}{{/if}}" 
-			/>
-			<span class="caret"></span>
-		</button>
-		<div class="dropdown-menu XXpull-right">
-			{{#if content}}
-				{{dynamictemplate content.tmpl content.data}}
-			{{else}}
-			<ul class="menu-tree">
-				{{#each options}}
-				<li><a style="display:block;" data-option-value="{{{value}}}" data-option-name="{{{name}}}" href="{{#if href}}{{{href}}}{{else}}javascript:void(0){{/if}}" {{#if onclick}}onclick="{{{onclick}}}"{{else}}{{#if ../onclick}}onclick="{{{../onclick}}}"{{/if}}{{/if}}>{{{name}}}</a></li>
-				{{/each}}
-			</ul>
-			{{/if}}
-		</div>
-	</div>
-</div>`);
-
-// initialize any data points
-
-Snap.setData('drop-data',{
-	defaultValue:{
-		onchange:"alert('hi')",
-		options:[
-			{name:'option 1', value:1},
-			{name:'option 2', value:2}
-		]
-	}
-})
-Snap.setDataConfig('page',{
-	defaultValue:{
-		name:'Home Page',
-		tmpl:'page-home'
-	}
-});
-
-Snap.setDataConfig('page-home',{
-	defaultValue:{n:0},
-	process:function(data){
-		data.n %= 5;
-		return data;
-	}
-});
-
-Snap.setDataConfig('formData',{
-	defaultValue:{
-		name:'Please enter your name'
-	},
-	useLocalStorage:true,
-	process:function(data,oldData){
-		if(!data || !data.name){
-			alert('Please enter a name!');
-			return oldData;
-		}
-		return data;
-	}
-});
-
-// Snap.setDataConfig('filtered-nav', {
-// 	source:'nav',
-// 	filter:function(data){
-// 		if(data){
-// 			console.log('filter',data)
-// 			data.name = 'filtered';
-// 		}
-// 		return data;
-// 	}
-// })
-
-Snap.watchData('nav',function(data){
-	// create a sub-set of a piece of data using watchData/setData
-	if(data){
-		data = $.extend(true,{},data);
-		
-		Page.recurse(data, function(c,p){
-			c.name = 'f '+c.name;
-		});
-
-		Snap.setData('filtered-nav',data);
-	}
-});
-
-// watch data to make any necessary changes
-
-Snap.watchData('formData',function(data){
-	Snap.setData('nav',function(navData){
-		if(navData){
-			navData.children[0].name = data.name;
-		}
-		return navData;
-	});
-});
-
-
-// optionally set nav data in config call
-
-Snap.setDataConfig('nav',{
-	useLocalStorage:true
-});
-
-Snap.setData('nav',{
-	name:'home',
-	id:1,
-	children:[
-		{
-			name:'link 1',
-			id:2
-		},
-		{
-			name:'link 2',
-			id:3,
-			children:[
-				{name:'link 6'},
-				{name:'link 7'},
-				{name:'link 8'}
-			]
-		},
-		{
-			name:'link 3',
-			id:4,
-			opened:true,
-			children:[
-				{name:'link 1'},
-				{name:'link 2'},
-				{name:'link 3'}
-			]
-		}
-	]
-});
-
-
-Snap.render();
+function formatCode(str){
+	return str.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
 </script>
+</head>
+
+<body>
+	
+
+<section>
+	<h1>Welcome to Snap.js</h1>
+	<h3>What is Snap.js?</h3>
+	<p>Snap.js is a helper script developed by Jason Contento for Skava Infosys. The intention is to simplify template updating.</p>
+	<h3>What problem does Snap solve?</h3>
+	<p>Snap provides a method to connect data to template and streamline the display refresh. Snap is appropriate for dynamic sites that utilize handlebars templates and JSON data sources. Using Handlebars templates is simple: 
+		<ol>
+			<li>Compile the template from a string into a function.</li>
+			<li>Pass a chunk of data to that compiled template as an argument</li>
+			<li>Inject the resulting string into the body of your page</li>
+		</ol>
+	</p>
+	<p>This scenario is fine as long as you don't expect the data source to update. In that case, you would need to have three items ready for update:
+		<ol>
+			<li>The template</li>
+			<li>The data source</li>
+			<li>The target container for the result</li>
+		</ol>
+	</p>
+	<p>Snap takes care of the relationship between those three items while also offering basic tools to connect chunks of data together.</p>
+	<h3>How it works...</h3>
+	<p>Snap.js uses element attributes to connect templates and data together. Each Snap template has a name - we'll call this the "template key". The data-tmpl attribute holds this key. Snap scrapes the page for elements with the attribute "data-tmpl" using a one time call of Snap.render(). Here's an example of a Snap element on the page:</p>
+	<pre class="static">
+	<script>
+document.write(formatCode(`
+<div data-tmpl="my-first-snap"></div>
+`))
+	</script>
+	</pre>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.render();
+`))
+	</script>
+	</pre>
+	<pre class="html">
+	<script>
+document.write(formatCode(`
+`))
+	</script>
+	</pre>
+	<p>The code above currently does nothing. :( Snap doesn't know what "my-first-snap" is but Snap is waiting for it. Now let's define our first template.</p>
+	<pre class="static">
+	<script>
+document.write(formatCode(`
+<div data-tmpl="my-first-snap"></div>
+`))
+	</script>
+	</pre>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setTemplate('my-first-snap','<h2>Hello there!</h2>');
+
+Snap.render();
+`))
+	</script>
+	</pre>
+	<pre class="html">
+	<script>
+document.write(formatCode(`
+<div data-tmpl="my-first-snap">
+	<h2>Hello there!</h2>
+</div>
+`))
+	</script>
+	</pre>
+	<p>Now lets make this a proper dynamic Handlebars template. We will also create the data chunk which is connected to the template. Important! Initial assumptions are made by Snap to simplify the integration. By default, Snap will connect a template to a data chunk of the same name. See here...</p>
+	<pre class="static">
+	<script>
+document.write(formatCode(`
+<div data-tmpl="my-first-snap"></div>
+`))
+	</script>
+	</pre>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setTemplate('my-first-snap','<h2>{{message}}</h2>');
+Snap.setData('my-first-snap',{message:'"Hello There!", he said dynamically.'})
+
+Snap.render();
+`))
+	</script>
+	</pre>
+	<pre class="html">
+	<script>
+document.write(formatCode(`
+<div data-tmpl="my-first-snap">
+	<h2>"Hello There!", he said dynamically.</h2>
+</div>
+`))
+	</script>
+	</pre>
+	<h2>Yeah, Yeah, Whatever...</h2>
+	<p>That's fine and all but I can do that on my own. No library necessary. Yes you can! But wait, there's more...</p>
+	<p>Let's reuse a template, but connect it to different data source. New thing alert: Use the attribute "data-watch" to set the key of the data we want to match our template to.</p>
+	<pre class="static">
+	<script>
+document.write(formatCode(`
+<div data-tmpl="my-first-snap"></div>
+<div data-tmpl="my-first-snap" data-watch="my-second-snap"></div>
+`))
+	</script>
+	</pre>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setTemplate('my-first-snap','<h2>{{message}}</h2>');
+
+Snap.setData('my-first-snap',{message:'"Hello There!", he said dynamically.'})
+Snap.setData('my-second-snap',{message:'These certainly ARE the droids you're looking for!'})
+
+Snap.render();
+`))
+	</script>
+	</pre>
+	<pre class="html">
+	<script>
+document.write(formatCode(`
+<div data-tmpl="my-first-snap">
+	<h2>"Hello There!", he said dynamically.</h2>
+</div>
+
+<div data-tmpl="my-first-snap" data-watch="my-second-snap">
+	<h2>These certainly ARE the droids you're looking for!</h2>
+</div>
+`))
+	</script>
+	</pre>
+	<p>Ok, that's all the special attributes you'll need to use. That's it, no more, I promise.
+	<h3>Increasing Orders of Complexity</h3>
+	<p>A few common things happen to data:
+		<ol>
+			<li>It is Updated.</li>
+			<li>It is Mutated</li>
+			<li>It is Distributed</li>
+		</ol>
+	</p>
+	<h3>Updating Your Data</h3>
+	<p>The primary method of updating data in Snap in through Snap.setData([KEY],[VALUE]) as already shown above. When you pass on object as the second argument, it is merged into the object using jQuery.extend(). You can also pass a function as the second argument. This function receives the current value of the data as it's single argument. Now you can make complex changes.</p>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setData('my-first-snap',{message:'This will change the rendered template.'})
+
+// OR
+
+Snap.setData('my-first-snap',function(data){
+	data.message = 'This will change the rendered template.';
+	return data;
+})
+`))
+	</script>
+	</pre>
+	<h3>Mutating Data</h3>
+	<p>Here comes a typical situation with templates. The data has arrived through internet magic, but it's just not structured the way you need it for this template. It needs to be mutated (sans toxic waste). In Snap the way data is mutated is call a "process". Important: A process runs before the chunk of data is distributed to any Snaps that may use it. Here's an example of a process:</p>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setTemplate('my-snap','Name: {{name}}')
+
+var raw_data = {
+	properties:[
+		nameLabel:'Carmen'
+	]
+}
+
+Snap.setProcess('my-snap', function(data){
+	data.name = data.properties.nameLabel;
+	return data;
+})
+
+Snap.setData('my-first-snap',raw_data)
+`))
+	</script>
+	</pre>
+	<h3>Distributing Data</h3>
+	<p>Snap has a loosly coupled concept using data watchers with Snap.watchData([KEY],[CALLBACK]). A watcher receives data and can then send it off somewhere else. Here's an example:</p>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.watchData('my-snap',function(mySnap){
+	// Maybe I need a piece of this data for another purpose
+	
+	Snap.setData('my-other-snap',function(myOtherSnap){
+		myOtherSnap.friend = mySnap.name;
+		return myOtherSnap;
+	})
+})
+
+// every time 'my-snap' is updated, it will trigger this watcher to update 'my-other-snap'
+`))
+	</script>
+	</pre>	
+	<h3>Loading Data</h3>
+	<p>Ok, the following is sugar coated candy - but a convenience none the less. Snap has a built in request method which is a direct extension of jQuery's ajax call. The passed argument is an object passed directly to jQuery.ajax(). When you're updating a Snap data chunk, you can pass the key as a parameter. You can also pass a process function. This will automatically push the response to the appropriate Snap data. Example:</p>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.request({
+	url:'/api/load/',
+	dataKey:'my-snap',
+	process:function(data){
+		// do something to the data before letting it into the wild
+		return data;
+	}
+})
+`))
+	</script>
+	</pre>
+	<h3>Nesting Snaps</h3>
+	<p>A Snap template can include html tags that call other Snaps. This allows nesting of Snaps. Snap will render these nested Snaps automatically. For this example, let's assume "table-template" is a nice table designed to display different lists of data.</p>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setTemplate('command-center',\`
+	<div data-tmpl="table-template" data-watch="widgets"</div>
+	<div data-tmpl="table-template" data-watch="cogs"</div>
+	<div data-tmpl="table-template" data-watch="widgets"</div>
+\`)
+`))
+	</script>
+	</pre>
+	<h3>But what if my data isn't ready? Hmm... Snap.setDataConfig(), Away!</h3>
+	<p>Use Snap.setDataConfig() to give your data chunks a default value and/or a root process. You don't really want a bunch of "null" values flying around, do you?</p>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setDataConfig({
+	defaultData:{
+		buttonName:'initial value'
+	},
+	process:function(data){
+		// recombobulate this data before distribution
+		if(!data){
+			data = {buttonName:''};
+		}
+		if(data.buttonName==='wrong value'){
+			data.buttonName = 'Much better value';
+		}
+		return data
+	}
+})
+`))
+	</script>
+	</pre>
+	<h3>Snap Dojo</h3>
+	<h4>Click Hooks</h4>
+	<p>An element on the page that has been rendered by Snap, can reference that Snap by passing itself to Snap.setData() in place of the usual key. Snap basically takes that element and bubbles up to the nearest element with a "data-tmpl" attribute.</p>
+	<pre class="html">
+	<script>
+document.write(formatCode(`
+<div data-tmpl="my-template"></div>
+`))
+	</script>
+	</pre>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setTemplate('my-template','<button id="myButton" onclick="clickButton(this)">{{buttonLabel}}</button> Total Clicks: {{clicks}}')
+
+Snap.setData('my-template',{
+	buttonLabel:'Click Me!',
+	clicks:0
+})
+
+function clickButton(el){
+	Snap.setData(el,function(data){
+		data.buttonLabel = 'Feeling clicked!';
+		data.clicks++;
+		return data;
+	})
+}
+
+Snap.render('.example');
+`))
+	</script>
+	</pre>
+	<div class="example">
+		<div data-tmpl="my-template"></div>
+	</div>
+	<script type="text/javascript">
+
+	Snap.setTemplate('my-template','<button id="myButton" onclick="clickButton(this)">{{buttonLabel}}</button> Total Clicks: {{clicks}}')
+
+	Snap.setData('my-template',{
+		buttonLabel:'Click Me!',
+		clicks:0
+	})
+
+	function clickButton(el){
+		Snap.setData(el,function(data){
+			data.buttonLabel = 'Feeling clicked!';
+			data.clicks++;
+			return data;
+		})
+	}
+
+	Snap.render('.example');
+
+	</script>
+	<h4>Hijack the Controller</h4>
+	<p>You can dig a little deeper into how Snap works by creating a custom controller for your object. A "controller" in Snap is the function that get called on an element that has been triggered by Snap.render(). The basic structure of the default controller is to create a watcher that re-renders the element when it's data is changed. Pretty straight forward. Sometimes this redraw is a problem. You may want to draw once and then target elemnt updats in your object based on the data change. Here's a basic custom controller:</p>
+	<pre class="code">
+	<script>
+document.write(formatCode(`
+Snap.setTemplate('my-template','<label>{{name}}</label>')
+
+Snap.setData('my-template',{
+	name:'Inigo Montoya'
+})
+
+Snap.setController('my-template',function(el){
+	var config = Snap.getElementConfig(el);
+
+	function update(){
+		var data = Snap.getData(config.dataKey);
+		$(el).html(Snap.getTemplate(config.tmpl)(data));
+	}
+
+	Snap.watchData(dataKey,update);
+})
+`))
+	</script>
+	</pre>
+<style type="text/css">
+.api-docs * {
+	font-weight: normal;
+	font-size: 12px;
+}
+.api-docs>li {
+	font-size: 16px;
+	font-weight: bold;
+}
+.api-docs>li {
+	margin-bottom: 20px;
+}
+.api-docs>li>ul>li {
+	font-size: 16px;
+}
+.api-docs>li>ul>li>ul>li {
+	/*font-size: 16px;*/
+}
+</style>
+	<h3>API Documentation</h3>
+	<p>(in progress)</p>
+	<ul class="api-docs">
+		<li>Snap.render()
+			<ul>
+				<li>Snap.render(element)
+					<ul>
+						<li>element:
+							<ul>
+								<li>optional</li>
+								<li>default: document.body</li>
+								<li>type: document element | jQuery element</li>
+							</ul>
+						</li>
+					</ul>
+				</li>
+			</ul>
+		</li>
+		<li>Snap.setData()
+			<ul>
+				<li>Snap.setData(key,value)</li>
+				<li>Snap.setData(key,function)</li>
+				<li>Snap.setData(element,value)</li>
+				<li>Snap.setData(element,function)</li>
+			</ul>
+		</li>
+		<li>Snap.getData()
+			<ul>
+				<li>Snap.getData(key)</li>
+			</ul>
+		</li>
+		<li>Snap.setDataConfig()
+			<ul>
+				<li>Snap.setDataConfig(key,object)</li>
+			</ul>
+		</li>
+		<li>Snap.request()
+			<ul>
+				<li>Snap.request(object)</li>
+			</ul>
+		</li>
+		<li>Snap.setController()
+			<ul>
+				<li>Snap.setController(key,function)</li>
+			</ul>
+		</li>
+	</ul>
+	<h3>Final Thoughts</h3>
+	<p>I hope this comes in handy! Feel free to send question/comments to <a href="mailto:jason-contento@skava.com">jason-contento@skava.com</a></p>
+</section>
+
+<script type="text/javascript">
+	//Snap.render();
+</script>
+</body>
+
 </html>
