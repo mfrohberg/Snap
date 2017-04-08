@@ -486,14 +486,21 @@ var Snap = (function(){
 		}
 	}
 
-	function addProcess(key, func){
+	function addProcess(key, func, options){
 		if(!processors[key]){
-			processors[key] = [];
+			processors[key] = []
 		}
-		processors[key].push(func);
+		if(!options){
+			options = {}
+		}
+		if(!options.priority){
+			options.priority = processors[key].length
+		}
+		processors[key].push(func)
+		processors[key].sort(function(a,b){
+			return a.priority<b.priority ? -1 : a.priority>b.priority ? 1 : 0
+		})
 	}
-
-	
 
 	function handleAjaxComplete(data){
 		if(this.process){
