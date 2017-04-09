@@ -1,27 +1,8 @@
 var gulp = require('gulp');
-var handlebars = require('gulp-handlebars');
-var declare = require('gulp-declare');
-var wrap = require('gulp-wrap');
-var concat = require('gulp-concat');
-var concatCss = require('gulp-concat-css');
 var uglify = require('gulp-uglify');
-var change = require('gulp-change');
-var cssmin = require('gulp-cssmin');
 var watch = require('gulp-watch');
-var htmlclean = require('gulp-htmlclean');
 var clean = require('gulp-clean');
 var rename = require('gulp-rename');
-//var stripcomments = require('gulp-strip-comments');
-//var stripcomments = require('remove-html-comments');
-
-gulp.task('edit', ['html'], function () {
-    watch([
-        './build/**/*'
-    ], 
-    function (events, done) {
-        gulp.start('html');
-    });
-});
 
 gulp.task('clean', function () {
     return gulp
@@ -29,29 +10,23 @@ gulp.task('clean', function () {
     .pipe(clean());
 });
 
-gulp.task('html',['clean'],function(){
-	return gulp
-	.src([
-	  './build/**/*'
-	])
-	.pipe(gulp.dest('./public'));
-})
-
-gulp.task('jsmin', ['html','clean'], function() {
-	return gulp
-	.src('./public/**/*.js')
-    .pipe(uglify())
+gulp.task('move', ['clean'], function() {
+    return gulp
+    .src('./build/**/*')
     .pipe(gulp.dest('./public'));
 });
 
-gulp.task('snapmin', function() {
+gulp.task('snapmin', ['move'], function() {
     return gulp
-    .src('./build/js/Snap.js')
+    .src('./public/js/Snap.js')
     .pipe(uglify())
     .pipe(rename('Snap.min.js'))
     .pipe(gulp.dest('./public/js/'));
 });
 
-gulp.task('default',['snapmin','html','jsmin','clean'],function(){
-	return gulp;
+gulp.task('default', ['snapmin'], function() {
+});
+
+gulp.task('dev', ['snapmin'], function() {
+    return gulp.watch('./build/**/*', ['default']);
 });

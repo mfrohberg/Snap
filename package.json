@@ -4,6 +4,8 @@
   "description": "Snap Demo",
   "main": "index.html",
   "scripts": {
+    "start":"gulp && node server",
+    "dev":"gulp dev & node server",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,24 +21,11 @@
   "devDependencies": {
     "express": "^4.14.0",
     "gulp": "^3.9.1",
-    "gulp-change": "^1.0.0",
     "gulp-clean": "^0.3.2",
-    "gulp-compile-handlebars": "^0.6.1",
-    "gulp-concat": "^2.6.1",
-    "gulp-concat-css": "^2.3.0",
-    "gulp-cssmin": "^0.1.7",
-    "gulp-declare": "^0.3.0",
-    "gulp-handlebars": "^4.0.0",
-    "gulp-htmlclean": "^2.7.8",
-    "gulp-htmlmin": "^3.0.0",
+    "gulp-change": "^1.0.0",
     "gulp-rename": "^1.2.2",
-    "gulp-strip-comments": "^2.4.3",
     "gulp-uglify": "^2.0.0",
-    "gulp-watch": "^4.3.11",
-    "gulp-wrap": "^0.13.0",
-    "handlebars": "^4.0.6",
-    "portfinder": "^1.0.13",
-    "request": "^2.79.0"
+    "gulp-watch": "^4.3.11"
   },
   "dependencies": {}
 }

@@ -5,34 +5,77 @@
 <title>Snap Test</title>
 <meta name="viewport" content="width=480, initial-scale=1.0, maximum-scale=1">
 
+<link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+
 <script src="/js/lib/jquery.min.js"></script>
 <script src="/js/lib/handlebars-v4.0.5.js"></script>
 <script src="/js/Snap.js"></script>
+<script src="/js/lib/parsley.min.js"></script>
 
-<style type="text/css">	
-	.nav-dot {
-		display: inline-block;
-		width: 10px;
-		height: 10px;
-		border-radius: 50%;
-		background-color: #CCC;
-		margin: 5px;
-	}
-	.nav-dot.selected {
-		background-color: #999;
-	}
+<script src="/js/snap-examples/nav.js"></script>
+<link rel="stylesheet" type="text/css" href="/css/nav.css">
+
+<style type="text/css">
+
+body {
+	padding: 10px;
+}
+
 </style>
+
 </head>
 
 <body>
+<div data-tmpl="nav"></div>
+<h3>Change Data</h3>
+<h3>Change Template</h3>
+<div data-tmpl="button"></div>
+<h3>Simple Nav</h3>
 	
 	<div data-tmpl="nav-list"></div>
 
 </body>
 
 <script type="text/javascript">
+	
+	var NavManager = (function(){
 
-var NavManager = (function(){
+	Snap.watchData('nav-data',function(navData){
+		// create arrays for each generation of the nav from navData {}
+		// 
+		Snap.setData('nav-list',{
+			position:1,
+			groups:[
+				[
+					{name:'link 1'},
+					{name:'link 2'}
+				],
+				[
+					{name:'link 3'},
+					{name:'link 4'}
+				],
+				[
+					{name:'link 5'},
+					{name:'link 6'}
+				]
+			],
+			currentGroup:[]
+		});
+
+	});
+
+	Snap.setDataConfig('nav-list',{
+		defaultData:{position:0, groups:[]},
+		useLocalStorage:true,
+		process:function(data){
+			data.position = Math.max(0,Math.min(data.groups.length-1,data.position));
+			data.currentGroup = data.groups[data.position];
+			$.each(data.groups,function(i,e){
+				e.selected = data.position===i ? 'selected' : '';
+			});
+			return data;
+		}
+	})
 
 	function back(){
 		Snap.setData('nav-list',function(data){
@@ -79,7 +122,7 @@ Snap.setTemplate('nav-list',`
 
 
 Snap.setDataConfig('nav-list',{
-	defaultValue:{position:0, groups:[]},
+	defaultData:{position:0, groups:[]},
 	useLocalStorage:true,
 	process:function(data){
 		data.position = Math.max(0,Math.min(data.groups.length-1,data.position));
@@ -115,7 +158,7 @@ Snap.setData('nav-list',{
 // optionally set nav data in config call
 
 Snap.setDataConfig('nav-data',{
-	defaultValue:{},
+	defaultData:{},
 	useLocalStorage:true,
 	process:function(data){
 		var groups = [];
@@ -153,6 +196,21 @@ Snap.setData('nav-data',{
 	]
 });
 
+</script>
+
+
+<script type="text/javascript">
+
+
+function changeMe(){
+	Snap.setTemplate('button','<h3>{{{name}}}</h3>');
+}
+
+Snap.setTemplate('button','<button onclick="changeMe()">{{{name}}}</button>');
+
+Snap.setData('button',{name:'my button'});
+
+Snap.setDebug(1);
 Snap.render();
 
 </script>

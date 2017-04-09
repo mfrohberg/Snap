@@ -99,7 +99,7 @@ var Snap = (function(){
 	Handlebars.registerHelper('snaptmpl', function(template, context, opts) {
 		if(!template || !context) return '';
 		// extend data with manually passed parameters
-		$.extend(context,opts.hash);
+		$.extend(context,opts ? opts.hash : {});
 		var tmpl = Handlebars.partials[template];
 	    return tmpl ? new Handlebars.SafeString(tmpl(context)) : '';
 	});
@@ -117,23 +117,34 @@ var Snap = (function(){
 
 	// default setting
 	function defaultTemplate(data){
-		return JSON.stringify(data);
+		return 'No Template. Data: '+JSON.stringify(data,null,2);
+	}
+
+	function removeWatcher(watcher){
+		watchers[watcher.key][watcher.index] = null;
 	}
 
 	function cleanupElement(el){
+		//return;
 		// kill watchers
 		var ctrl,c,w;
 		$('[snap-ctrl]',el).each(function(i,e){
 			ctrl = getElementController(e);
 			c = ctrl.getConfig();
-			w = ctrl.getWatcherIndex();
+			//w = ctrl.getWatcherIndex();
+
+			watcher = ctrl.getWatcher();
+			watchers[watcher.key][watcher.index] = null;
+
+			//console.log('remove watcher',watcher)
 			// remove from watches
-			watchers[c.dataKey][w] = null;
+			//watchers[c.dataKey][w] = null;
 			// get slot ready for reuse
-			if(!watchersReuse[c.dataKey]){
-				watchersReuse[c.dataKey] = [];
+			if(!watchersReuse[watcher.key]){
+				watchersReuse[watcher.key] = [];
 			}
-			watchersReuse[c.dataKey].push(w);
+			//watchersReuse[c.dataKey].push(w);
+			watchersReuse[watcher.key].push(watcher.index);
 		})
 	}
 
@@ -159,16 +170,22 @@ var Snap = (function(){
 			renderElement(getData(config.dataKey));
 		}
 
-		var watcherIndex = watchData(config.dataKey,renderElement);
+		var watcher = watchData(config.dataKey,renderElement);
+		//var watchIndex = watcher.index;
+		
+		// function getWatcherIndex(){
+		// 	return watcherIndex;
+		// }
 
-		function getWatcherIndex(){
-			return watcherIndex;
+		function getWatcher(){
+			return watcher;
 		}
 
 		return {
 			setConfig:setConfig,
 			getConfig:getConfig,
-			getWatcherIndex:getWatcherIndex
+			//getWatcherIndex:getWatcherIndex,
+			getWatcher:getWatcher
 		}
 	}
 
@@ -235,6 +252,7 @@ var Snap = (function(){
 				if(getData(tmpl)===null){
 					// dummy data holder
 					setData(tmpl,false);
+					//setData(tmpl,'');
 				}
 			}
 
@@ -289,24 +307,38 @@ var Snap = (function(){
 
 	function watchData(key,cb){
 		if(debug>1) console.log('watchData',key);
+		var path = key.replace(/^.+?(?=[\[\.])/,'');
+		var deep = key!==path;
+
+		if(deep){
+			key = key.match(/^.+?(?=[\[\.])/)[0];//.split('.')[0];
+		}
 		if(!watchers[key]){
 			watchers[key] = [];
 		}
 		var watchIndex;
 
 		// lets reuse watch index to avoid bloat in the array
+		var watcher = {
+			callback:cb,
+			path:path, 
+			deep:deep,
+			key:key
+		}
+
 		if(watchersReuse[key] && watchersReuse[key].length>0){
 			watchIndex = watchersReuse[key].pop();
-			watchers[key][watchIndex] = cb;
+			watchers[key][watchIndex] = watcher;
 		} else {
-			watchIndex = watchers[key].push(cb)-1;
+			watchIndex = watchers[key].push(watcher)-1;
 		}
+		watcher.index = watchIndex;
 
 		var data = getData(key);
 		if(data!==null){
-			cb(data);
+			runWatcher(watcher,data);
 		}
-		return watchIndex;
+		return watcher;//Index;
 	}
 
 	function audit(){
@@ -324,8 +356,20 @@ var Snap = (function(){
 		// don't trigger render on null data
 		if(!data) return;
 		var i = watchers[key].length;
+		var w;
 		while(i--){
-			if(watchers[key][i]) watchers[key][i](data);
+			runWatcher(watchers[key][i],data);
+		}
+	}
+
+	function runWatcher(watcher,data){
+		if(watcher && watcher.callback){
+			if(watcher.deep===true){
+				data = eval('data'+watcher.path)
+			}
+			if(data!==undefined){
+				watcher.callback(data)
+			}
 		}
 	}
 
@@ -485,34 +529,55 @@ var Snap = (function(){
 		}
 	}
 
-	function addProcess(key, func){
+	function addProcess(key, func, options){
 		if(!processors[key]){
-			processors[key] = [];
+			processors[key] = []
 		}
-		processors[key].push(func);
+		if(!options){
+			options = {}
+		}
+		if(!options.priority){
+			options.priority = processors[key].length
+		}
+		processors[key].push(func)
+		processors[key].sort(function(a,b){
+			return a.priority<b.priority ? -1 : a.priority>b.priority ? 1 : 0
+		})
+	}
+
+	function handleAjaxComplete(data){
+		if(this.process){
+			data = this.process(data);
+		}
+		if(this.dataKey){
+			setData(this.dataKey,data,{overwrite:this.overwrite===true});
+		}
+		if(this.callback){
+			this.callback(data);
+		}
+		requestStatus = 0;
+		if(requestQueue.length){
+			nextRequest();
+		}
+	}
+
+	function handleAjaxError(){
+		console.log('Snap.handleAjaxError() There was an error');
+		this.data = {error:true, errorMessage:'Unknown error.'};
+		handleAjaxComplete(this);
 	}
 
 	function nextRequest(){
 		if(requestStatus>0) return;
 		requestStatus = 1;
 		var entry = requestQueue.pop();
-		if(!entry.dataType){
-			entry.dataType = 'json';
-		}
 		if(debug>0) console.log('Snap.request()',entry);
-		$.ajax(entry).done(function(data){
-			if(this.process){
-				data = this.process(data);
-			}
-			if(this.dataKey){
-				setData(this.dataKey,data,{overwrite:this.overwrite===true});
-			}
-			if(this.callback){
-				this.callback(data);
-			}
-			requestStatus = 0;
-			if(requestQueue.length) nextRequest();
-		})
+
+		$.ajax($.extend({
+			dataType:'json',
+			error:handleAjaxError,
+			success:handleAjaxComplete 
+		},entry));
 	}
 
 	function request(info){

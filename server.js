@@ -1,6 +1,5 @@
 var express = require('express');
 var path = require('path');
-var net = require("net");
 
 var app = express();
 var port = 8000;

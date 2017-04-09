@@ -59,7 +59,7 @@ var NavManager = (function(){
 	});
 
 	Snap.setDataConfig('nav-list',{
-		defaultValue:{position:0, groups:[]},
+		defaultData:{position:0, groups:[]},
 		useLocalStorage:true,
 		process:function(data){
 			data.position = Math.max(0,Math.min(data.groups.length-1,data.position));
@@ -116,7 +116,7 @@ Snap.setTemplate('nav-list',`
 
 
 Snap.setDataConfig('nav-list',{
-	defaultValue:{position:0, groups:[]},
+	defaultData:{position:0, groups:[]},
 	useLocalStorage:true,
 	process:function(data){
 		data.position = Math.max(0,Math.min(data.groups.length-1,data.position));
@@ -152,7 +152,7 @@ Snap.setData('nav-list',{
 // optionally set nav data in config call
 
 Snap.setDataConfig('nav-data',{
-	defaultValue:{},
+	defaultData:{},
 	useLocalStorage:true,
 	process:function(data){
 		var groups = [];
