@@ -4,5 +4,5 @@ $ npm run dev
 
 See:
 
-# index = all about Snap
-# examples = In progress demos
+1. index = all about Snap
+2. examples = In progress demos
